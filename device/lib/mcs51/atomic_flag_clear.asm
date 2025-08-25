@@ -25,21 +25,9 @@
 ;  not however invalidate any other reasons why the executable file
 ;  might be covered by the GNU General Public License.
 ;--------------------------------------------------------------------------
-
-	.area HOME    (CODE)
-	.area GSINIT0 (CODE)
-	.area GSINIT1 (CODE)
-	.area GSINIT2 (CODE)
-	.area GSINIT3 (CODE)
-	.area GSINIT4 (CODE)
-	.area GSINIT5 (CODE)
-	.area GSINIT  (CODE)
-	.area GSFINAL (CODE)
-	.area CSEG    (CODE)
-
-	.area HOME    (CODE)
-
-_atomic_flag_clear::
+	.global _atomic_flag_clear
+	.section .text._atomic_flag_clear, "ax"
+_atomic_flag_clear:
 	mov  r0,dpl
 	clr  a
 	mov  @r0,a

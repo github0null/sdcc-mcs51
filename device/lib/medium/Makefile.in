@@ -2,11 +2,11 @@
 
 all:
 	$(MAKE) -C ../mcs51 all
-	cp ../mcs51/*.rel .
-	touch dummy.rel
+	cp ../mcs51/*.o .
+	touch dummy.o
 
 clean:
-	rm -f *.rel *.sym *.lst *.asm *~ *.lib
+	rm -f *.o *.sym *.lst *.asm *~ *.lib
 
 distclean: clean
 	rm -f Makefile

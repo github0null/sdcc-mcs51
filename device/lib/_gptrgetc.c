@@ -45,13 +45,13 @@ _gptrgetc (char *gptr) __naked
     ;
     ;   depending on the pointer type acc. to SDCCsymt.h
     ;
-    	jb		_B_7,codeptr$        ; >0x80 code		; 3
-    	jnb		_B_6,xdataptr$       ; <0x40 far		; 3
+    	jb		_B_7,.Lcodeptr        ; >0x80 code		; 3
+    	jnb		_B_6,.Lxdataptr       ; <0x40 far		; 3
 
         mov     dph,r0 ; save r0 independent of regbank	; 2
         mov     r0,dpl ; use only low order address		; 2
 
-    	jb		_B_5,pdataptr$       ; >0x60 pdata		; 3
+    	jb		_B_5,.Lpdataptr       ; >0x60 pdata		; 3
     ;
     ;   Pointer to data space
     ;
@@ -62,7 +62,7 @@ _gptrgetc (char *gptr) __naked
     ;
     ;   pointer to external stack or pdata
     ;
- pdataptr$:
+ .Lpdataptr:
         movx    a,@r0									; 1
         mov     r0,dph ; restore r0						; 2
         mov     dph,#0 ; restore dph					; 2
@@ -71,8 +71,8 @@ _gptrgetc (char *gptr) __naked
 ;   pointer to xternal data
 ;   pointer to code area
 ;
- codeptr$:
- xdataptr$:
+ .Lcodeptr:
+ .Lxdataptr:
         clr     a										; 1
         movc    a,@a+dptr								; 1
         ret												; 1
@@ -96,16 +96,16 @@ _gptrgetc (char *gptr) __naked
     ;   depending on the pointer type acc. to SDCCsymt.h
     ;
         mov     a,b
-        jz      00001$	; 0 near
+        jz      .L00001	; 0 near
 	dec     a
-	jz      00003$	; 1 far
+	jz      .L00003	; 1 far
         dec     a
-        jz      00003$	; 2 code
+        jz      .L00003	; 2 code
 	dec     a
-	jz      00004$  ; 3 pdata
+	jz      .L00004  ; 3 pdata
 	dec     a	; 4 skip generic pointer
 	dec     a
-	jz      00001$	; 5 idata
+	jz      .L00001	; 5 idata
     ;
     ;   any other value for type
     ;   return xFF
@@ -114,7 +114,7 @@ _gptrgetc (char *gptr) __naked
     ;
     ;   Pointer to data space
     ;
- 00001$:
+ .L00001:
 	mov     r0,dpl     ; use only low order address
 	mov     a,@r0
         ret
@@ -122,14 +122,14 @@ _gptrgetc (char *gptr) __naked
 ;   pointer to xternal data
 ;   pointer to code area
 ;
- 00003$:
+ .L00003:
 	; clr     a  is already 0
         movc    a,@a+dptr
         ret
 ;
 ;   pointer to xternal stack
 ;
- 00004$:
+ .L00004:
 	mov     r0,dpl
         movx    a,@r0
 ;

@@ -52,31 +52,31 @@ _gptrget (char *gptr) __naked
     ;
     ;   depending on the pointer type acc. to SDCCsymt.h
     ;
-        jb      _B_7,codeptr$        ; >0x80 code       ; 3
-        jnb     _B_6,xdataptr$       ; <0x40 far        ; 3
+        jb      _B_7,.Lcodeptr        ; >0x80 code       ; 3
+        jnb     _B_6,.Lxdataptr       ; <0x40 far        ; 3
 
         mov     dph,r0 ; save r0 independent of regbank ; 2
         mov     r0,dpl ; use only low order address     ; 2
 
-        jb      _B_5,pdataptr$       ; >0x60 pdata      ; 3
+        jb      _B_5,.Lpdataptr       ; >0x60 pdata      ; 3
     ;
     ;   Pointer to data space
     ;
         mov     a,@r0                                   ; 1
- dataptrrestore$:
+ .Ldataptrrestore:
         mov     r0,dph ; restore r0                     ; 2
         mov     dph,#0 ; restore dph                    ; 3
         ret                                             ; 1
     ;
     ;   pointer to external stack or pdata
     ;
- pdataptr$:
+ .Lpdataptr:
         movx    a,@r0                                   ; 1
-        sjmp    dataptrrestore$                         ; 2
+        sjmp    .Ldataptrrestore                         ; 2
     ;
     ;   pointer to code area
     ;
- codeptr$:
+ .Lcodeptr:
     ; implementation for SiLabs C8051F12x
         mov     a,b                                     ; 2
         anl     a,#0x03                                 ; 2
@@ -92,7 +92,7 @@ _gptrget (char *gptr) __naked
     ;
     ;   pointer to xternal data
     ;
- xdataptr$:
+ .Lxdataptr:
     ; implementation for xram a16-a21 tied to P3
         mov     _P3,b                                   ; 3
 
@@ -118,13 +118,13 @@ _gptrget (char *gptr) __naked
     ;   depending on the pointer type acc. to SDCCsymt.h
     ;
         mov     a,dph                                   ; 2
-        jb      acc[7],codeptr$      ; >0x80 code       ; 3
-        jnb     acc[6],xdataptr$     ; <0x40 far        ; 3
+        jb      acc[7],.Lcodeptr      ; >0x80 code       ; 3
+        jnb     acc[6],.Lxdataptr     ; <0x40 far        ; 3
 
         mov     b,r0   ; save r0 independent of regbank ; 2
         mov     r0,dpl ; use only low order address     ; 2
 
-        jb      acc[5],pdataptr$     ; >0x60 pdata      ; 3
+        jb      acc[5],.Lpdataptr     ; >0x60 pdata      ; 3
     ;
     ;   Pointer to data space
     ;
@@ -134,14 +134,14 @@ _gptrget (char *gptr) __naked
     ;
     ;   pointer to xternal stack or pdata
     ;
- pdataptr$:
+ .Lpdataptr:
         movx    a,@r0                                   ; 1
         mov     r0,b   ; restore r0                     ; 2
         ret                                             ; 1
     ;
     ;   pointer to code area, max 15 bits
     ;
- codeptr$:
+ .Lcodeptr:
     ; 0x8000 <= dptr <= 0xFFFF
     ; no need to AND dph and restore from B if hardware wraps code memory
         anl     dph,#0x7F                               ; 3
@@ -152,7 +152,7 @@ _gptrget (char *gptr) __naked
     ;
     ;   pointer to xternal data, max 14 bits
     ;
- xdataptr$:
+ .Lxdataptr:
     ; 0 <= dptr <= 0x3FFF
         movx    a,@dptr                                 ; 1
         ret                                             ; 1
@@ -175,38 +175,38 @@ _gptrget (char *gptr) __naked
     ;
     ;   depending on the pointer type acc. to SDCCsymt.h
     ;
-        jb      _B_7,codeptr$        ; >0x80 code       ; 3
-        jnb     _B_6,xdataptr$       ; <0x40 far        ; 3
+        jb      _B_7,.Lcodeptr        ; >0x80 code       ; 3
+        jnb     _B_6,.Lxdataptr       ; <0x40 far        ; 3
 
         mov     dph,r0 ; save r0 independent of regbank ; 2
         mov     r0,dpl ; use only low order address     ; 2
 
-        jb      _B_5,pdataptr$       ; >0x60 pdata      ; 3
+        jb      _B_5,.Lpdataptr       ; >0x60 pdata      ; 3
     ;
     ;   Pointer to data space
     ;
         mov     a,@r0                                   ; 1
- dataptrrestore$:
+ .Ldataptrrestore:
         mov     r0,dph ; restore r0                     ; 2
         mov     dph,#0 ; restore dph                    ; 3
         ret                                             ; 1
     ;
     ;   pointer to xternal stack or pdata
     ;
- pdataptr$:
+ .Lpdataptr:
         movx    a,@r0                                   ; 1
-        sjmp    dataptrrestore$                         ; 2
+        sjmp    .Ldataptrrestore                         ; 2
     ;
     ;   pointer to code area, max 16 bits
     ;
- codeptr$:
+ .Lcodeptr:
         clr     a                                       ; 1
         movc    a,@a+dptr                               ; 1
         ret                                             ; 1
     ;
     ;   pointer to xternal data, max 16 bits
     ;
- xdataptr$:
+ .Lxdataptr:
         movx    a,@dptr                                 ; 1
         ret                                             ; 1
                                                         ;===
@@ -229,13 +229,13 @@ _gptrgetWord (unsigned *gptr)
     ;
     ;   depending on the pointer type acc. to SDCCsymt.h
     ;
-        jb      _B_7,00003$           ; >0x80 code
-        jnb     _B_6,00002$           ; <0x40 far
+        jb      _B_7,.L00003           ; >0x80 code
+        jnb     _B_6,.L00002           ; <0x40 far
 
         mov     dph,r0 ; save r0 independent of regbank
         mov     r0,dpl ; use only low order address
 
-        jb      _B_5,00004$           ; >0x60 pdata
+        jb      _B_5,.L00004           ; >0x60 pdata
     ;
     ;   Pointer to data space
     ;
@@ -243,31 +243,31 @@ _gptrgetWord (unsigned *gptr)
         inc     r0
         mov     a,@r0
         inc     dpl
-        sjmp    00005$
+        sjmp    .L00005
     ;
     ;   pointer to xternal data
     ;
- 00002$:
+ .L00002:
         movx    a,@dptr
         mov     acc1,a
         inc     dptr
         movx    a,@dptr
-        sjmp    00006$
+        sjmp    .L00006
 ;
 ;   pointer to code area
 ;
- 00003$:
+ .L00003:
         clr     a
         movc    a,@a+dptr
         mov     acc1,a
         clr     a
         inc     dptr
         movc    a,@a+dptr
-        sjmp    00006$
+        sjmp    .L00006
 ;
 ;   pointer to xternal stack
 ;
- 00004$:
+ .L00004:
         movx    a,@r0
         mov     acc1,a
         inc     r0
@@ -276,10 +276,10 @@ _gptrgetWord (unsigned *gptr)
 ;
 ;   restore and return
 ;
- 00005$:
+ .L00005:
         mov     r0,dph ; restore r0
         mov     dph,#0 ; restore dph
- 00006$:
+ .L00006:
         xch     a,acc1
     __endasm;
 

@@ -50,9 +50,9 @@ fsgetarg:
 	rlc	a
 	mov	sign_a, c
 	mov	exp_a, a
-	jz	00001$
+	jz	.L00001
 	setb	b.7
-00001$:
+.L00001:
 	mov	r4, b
 	ret
 	__endasm;

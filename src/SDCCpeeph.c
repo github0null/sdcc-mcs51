@@ -539,10 +539,8 @@ FBYNAME (labelIsReturnOnly)
         {
           if (strncmp(pl->line, label, len) == 0)
             break; /* Found Label */
-          if (strlen(pl->line) != 7       || !ISCHARDIGIT(*(pl->line))   ||
-              !ISCHARDIGIT(*(pl->line+1)) || !ISCHARDIGIT(*(pl->line+2)) ||
-              !ISCHARDIGIT(*(pl->line+3)) || !ISCHARDIGIT(*(pl->line+4)) ||
-              *(pl->line+5) != '$')
+          // gas style label: '.Lxxx'
+          if (!(strlen(pl->line) > 2 && *(pl->line) == '.' && *(pl->line + 1) == 'L'))
             {
               return FALSE; /* non-local label encountered */
             }
@@ -604,10 +602,8 @@ FBYNAME (labelIsUncondJump)
               found = true;
               break; /* Found Label */
             }
-          if (strlen(pl->line) != 7       || !ISCHARDIGIT(*(pl->line))   ||
-              !ISCHARDIGIT(*(pl->line+1)) || !ISCHARDIGIT(*(pl->line+2)) ||
-              !ISCHARDIGIT(*(pl->line+3)) || !ISCHARDIGIT(*(pl->line+4)) ||
-              *(pl->line+5) != '$')
+          // gas style label: '.Lxxx'
+          if (!(strlen(pl->line) > 2 && *(pl->line) == '.' && *(pl->line + 1) == 'L'))
             {
               break; /* non-local label encountered */
             }
@@ -625,10 +621,8 @@ FBYNAME (labelIsUncondJump)
                   found = true;
                   break; /* Found Label */
                 }
-              if (strlen(pl->line) != 7       || !ISCHARDIGIT(*(pl->line))   ||
-                  !ISCHARDIGIT(*(pl->line+1)) || !ISCHARDIGIT(*(pl->line+2)) ||
-                  !ISCHARDIGIT(*(pl->line+3)) || !ISCHARDIGIT(*(pl->line+4)) ||
-                  *(pl->line+5) != '$')
+              // gas style label: '.Lxxx'
+              if (!(strlen(pl->line) > 2 && *(pl->line) == '.' && *(pl->line + 1) == 'L'))
                 {
                   return FALSE; /* non-local label encountered */
                 }
@@ -956,19 +950,19 @@ FBYNAME (newLabel)
     {
       const char *name = entry->name;
       wassert (name);
-      if (!ISCHARDIGIT (name[0]))
+      if (name[0] != '.')
         continue;
-      if (name[strlen (name)-1] != '$')
+      if (name[1] != 'L')
         continue;
       unsigned n;
-      if (sscanf (name, "%u$", &n) != 1)
+      if (sscanf (name, ".L%u", &n) != 1)
         continue;
       if (maxLabel < n)
         maxLabel = n;
     }
   ++maxLabel;
   entry = traceAlloc (&_G.labels, Safe_alloc (sizeof (*entry)));
-  int len = snprintf (entry->name, SDCC_NAME_MAX, "%05u$", maxLabel);
+  int len = snprintf (entry->name, SDCC_NAME_MAX, ".L%05u", maxLabel);
   entry->name[len] = 0;
   entry->refCount = refCount;
   hTabAddItem (&labelHash, hashSymbolName (entry->name), entry);
@@ -3602,7 +3596,7 @@ isLabelDefinition (const char *line, const char **start, int *len, bool isPeepRu
 
   *start = cp;
 
-  while (ISCHARALNUM (*cp) || (*cp == '$') || (*cp == '_') ||
+  while ((*cp == '.') || (*cp == 'L') || ISCHARALNUM (*cp) || (*cp == '_') ||
          (isPeepRule && (*cp == '%')))
     {
       cp++;

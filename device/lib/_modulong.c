@@ -210,10 +210,7 @@ __modulong:
 	#define b2	r4
 	#define b3	r5
 
-	ar2 = 2			; BUG register set is not considered
-	ar3 = 3
-	ar4 = 4
-	ar5 = 5
+	.using 0			; BUG register set is not considered
 
 	.globl __modlong	; entry point for __modslong
 

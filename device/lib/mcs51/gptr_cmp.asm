@@ -26,19 +26,6 @@
 ;  might be covered by the GNU General Public License.
 ;--------------------------------------------------------------------------
 
-	.area HOME    (CODE)
-	.area GSINIT0 (CODE)
-	.area GSINIT1 (CODE)
-	.area GSINIT2 (CODE)
-	.area GSINIT3 (CODE)
-	.area GSINIT4 (CODE)
-	.area GSINIT5 (CODE)
-	.area GSINIT  (CODE)
-	.area GSFINAL (CODE)
-	.area CSEG    (CODE)
-
-	.area HOME    (CODE)
-
 ; compares two generic pointers.
 ; if p1 < p2  return NZ and C
 ; if p1 == p2 return  Z and NC
@@ -47,7 +34,9 @@
 ; assumes that banks never map to address 0x0000
 ; so it suffices to check dptr part only and ignore b
 
-___gptr_cmp::
+	.global ___gptr_cmp
+	.section .text.___gptr_cmp, "ax"
+___gptr_cmp:
 	mov  a,sp
 	add  a,#0xfc
 	clr  c
@@ -56,12 +45,12 @@ ___gptr_cmp::
 	mov  a,@r0
 	inc  r0
 	orl  a,@r0
-	jnz  00001$
+	jnz  .L00001
 	mov  a,dpl
 	orl  a,dph
 ; if both are NULL, return Z and NC
-	jz   00002$
-00001$:
+	jz   .L00002
+.L00001:
 	push dpl
 	dec  r0
 	mov  a,dpl
@@ -79,7 +68,7 @@ ___gptr_cmp::
 ; p2 = p1, return Z and NC
 ; p2 > p1, return NZ and NC
 	pop  dpl
-00002$:
+.L00002:
 	xch  a,r0
 	pop  acc
 	xch  a,r0

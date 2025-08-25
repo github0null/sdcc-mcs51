@@ -39,17 +39,17 @@ static void dummy(void) __naked
 	__asm
 	.globl	fs_rshift_a
 fs_rshift_a:
-	jz	00020$
+	jz	.L00020
 	mov	r0, a
 	add	a, exp_a	// adjust exponent
-	jnc	00001$
+	jnc	.L00001
 	mov	a, #255		// don't roll over
-00001$:
+.L00001:
 	mov	exp_a, a
 #ifdef FLOAT_SHIFT_SPEEDUP
 	mov	a, r0
 	add	a, #248
-	jnc	00003$
+	jnc	.L00003
 	xch	a, r4
 	xch	a, r3
 	xch	a, r2
@@ -61,7 +61,7 @@ fs_rshift_a:
 	//mov	r3, ar4
 	//mov	r4, #0
 	add	a, #248
-	jnc	00003$
+	jnc	.L00003
 	xch	a, r3
 	xch	a, r2
 	mov	r1, a
@@ -71,7 +71,7 @@ fs_rshift_a:
 	//mov	r2, ar3
 	//mov	r3, #0
 	add	a, #248
-	jnc	00003$
+	jnc	.L00003
 	xch	a, r2
 	mov	r1, a
 	clr	a
@@ -79,15 +79,15 @@ fs_rshift_a:
 	//mov	r1, ar2
 	//mov	r2, #0
 	add	a, #248
-	jnc	00003$
+	jnc	.L00003
 	mov	r1, #0
 	ret
-00003$:
+.L00003:
 	add	a, #8
-	jz	00020$
+	jz	.L00020
 	mov	r0, a
 #endif
-00005$:
+.L00005:
 	clr	c
 	mov	a, r4
 	rrc	a
@@ -101,8 +101,8 @@ fs_rshift_a:
 	mov	a, r1
 	rrc	a
 	mov	r1, a
-	djnz	r0, 00005$
-00020$:
+	djnz	r0, .L00005
+.L00020:
 	ret
 	__endasm;
 }

@@ -8,7 +8,9 @@
   __sfr __at 0x8A SFR_LSB;        //timer 0 low byte
   __sfr __at 0x8C SFR_MSB;        //timer 0 high byte
   __sfr16 __at 0x8C8A SFR_16;     //timer 0
+  #if !defined(__SDCC_GNU_AS)
   __sfr32 __at 0x8C8ACDCC SFR_32; //timer 0 & 2
+  #endif
 #elif defined (__SDCC_ds390)
   __sfr __at 0x8B SFR_LSB;        //timer 1 low byte
   __sfr __at 0x8D SFR_MSB;        //timer 1 high byte
@@ -34,10 +36,11 @@ test_sfr (void)
 
   SFR_LSB++;
   ASSERT (SFR_16 == 0x0101);
-
+#if !defined(__SDCC_GNU_AS)
   SFR_32 = 0x12345678;
   SFR_32 -= 0x02040608;
   ASSERT (SFR_32 == 0x10305070);
+#endif
 #endif
 }
 

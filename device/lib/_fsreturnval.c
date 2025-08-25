@@ -42,11 +42,11 @@ static void dummy(void) __naked
 fs_round_and_return:
 #ifdef FLOAT_FULL_ACCURACY
 	// discard the extra 8 bits of precision we kept around in r1
-	cjne	r1, #128, 00001$
+	cjne	r1, #128, .L00001
 	mov	a, r2
 	rrc	a
 	cpl	c
-00001$:
+.L00001:
 	jc	fs_zerocheck_return
 	mov	a, r2
 	add	a, #1

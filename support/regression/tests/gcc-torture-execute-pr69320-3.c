@@ -11,7 +11,7 @@
 #include <stdlib.h>
 
 #if !defined(__SDCC_pdk14) // Lack of memory
-static int a[40] = {7, 5, 3, 3, 0, 0, 3};
+static int a[20] = {7, 5, 3, 3, 0, 0, 3};
 short b;
 int c = 5;
 #endif

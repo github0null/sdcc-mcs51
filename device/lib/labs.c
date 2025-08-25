@@ -39,7 +39,7 @@ static void dummy(void) __naked
 	__asm
 	.globl	_labs
 _labs:
-	jnb	acc.7, 00001$
+	jnb	acc.7, .L00001
 	mov	r2,a
 	clr	c
 	clr	a
@@ -53,7 +53,7 @@ _labs:
 	mov	b,a
 	clr	a
 	subb	a,r2
-00001$:
+.L00001:
 	_RETURN
 	__endasm;
 }

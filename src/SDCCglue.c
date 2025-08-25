@@ -168,8 +168,8 @@ emitRegularMap (memmap *map, bool addPublics, bool arFlag)
       else
         dbuf_tprintf (&map->oBuf, "\t!area\n", map->sname);
 
-      if (map->regsp)
-        dbuf_tprintf (&map->oBuf, "\t!org\n", 0);
+      // if (map->regsp)
+      //   dbuf_tprintf (&map->oBuf, "\t!org\n", 0);
     }
 
   for (sym = setFirstItem (map->syms); sym; sym = setNextItem (map->syms))
@@ -380,8 +380,10 @@ emitRegularMap (memmap *map, bool addPublics, bool arFlag)
             }
           if (IS_STATIC (sym->etype) || sym->level)
             dbuf_tprintf (&map->oBuf, "!slabeldef\n", sym->rname);
-          else
+          else {
+            dbuf_tprintf (&map->oBuf, "!global\n", sym->rname);
             dbuf_tprintf (&map->oBuf, "!labeldef\n", sym->rname);
+          }
           dbuf_tprintf (&map->oBuf, "\t!ds\n", (unsigned int) size & 0xffff);
         }
 
@@ -805,24 +807,28 @@ _printPointerType (struct dbuf_s *oBuf, const char *name, int size)
 
   if (size == 4)
     {
-      if (port->little_endian)
-        dbuf_printf (oBuf, "\t.byte %s, (%s >> 8), (%s >> 16), (%s >> 24)", name, name, name, name);
-      else
-        dbuf_printf (oBuf, "\t.byte (%s >> 24), (%s >> 16), (%s >> 8), %s", name, name, name, name);
+      werror (E_INTERNAL_ERROR, __FILE__, __LINE__,
+        "not support 4 bytes pointer (addr > 64K)");
+      // if (port->little_endian)
+      //   dbuf_printf (oBuf, "\t.byte %s, (%s >> 8), (%s >> 16), (%s >> 24)", name, name, name, name);
+      // else
+      //   dbuf_printf (oBuf, "\t.byte (%s >> 24), (%s >> 16), (%s >> 8), %s", name, name, name, name);
     }
   else if (size == 3)
     {
-      if (port->little_endian)
-        dbuf_printf (oBuf, "\t.byte %s, (%s >> 8), (%s >> 16)", name, name, name);
-      else
-        dbuf_printf (oBuf, "\t.byte (%s >> 16), (%s >> 8), %s", name, name, name);
+      werror (E_INTERNAL_ERROR, __FILE__, __LINE__,
+        "not support 3 bytes pointer (addr > 64K)");
+      // if (port->little_endian)
+      //   dbuf_printf (oBuf, "\t.byte %s, (%s >> 8), (%s >> 16)", name, name, name);
+      // else
+      //   dbuf_printf (oBuf, "\t.byte (%s >> 16), (%s >> 8), %s", name, name, name);
     }
   else
     {
       if (port->little_endian)
-        dbuf_printf (oBuf, "\t.byte %s, (%s >> 8)", name, name);
+        dbuf_printf (oBuf, "\t.byte lo_(%s), hi_(%s)", name, name);
       else
-        dbuf_printf (oBuf, "\t.byte (%s >> 8), %s", name, name);
+        dbuf_printf (oBuf, "\t.byte hi_(%s), lo_(%s)", name, name);
     }
 }
 
@@ -878,17 +884,29 @@ printIvalType (symbol * sym, sym_link * type, initList * ilist, struct dbuf_s *o
           for (i = (le ? 0 : size - 1); le ? (i < size) : (i > -1); i += (le ? 1 : -1))
             {
               if (i == 0)
-			    if (val->name && strlen (val->name) > 0)
-                  dbuf_printf (oBuf, "%s", val->name);
-				else
-                  dbuf_printf (oBuf, "#0x00");
+                {
+                  if (strlen (val->name) > 0)
+                    dbuf_printf (oBuf, "lo_(%s)", val->name);
+                  else
+                    dbuf_printf (oBuf, "#0x00");
+                }
               else if (0 < i && i < top)
-			    if (val->name && strlen (val->name) > 0)
-                  dbuf_printf (oBuf, "(%s >> %d)", val->name, i * 8);
-				else
-                  dbuf_printf (oBuf, "#0x00");
+                {
+                  if (strlen (val->name) > 0)
+                    {
+                      if (i == 1)
+                        dbuf_printf (oBuf, "hi_(%s)", val->name);
+                      else
+                        werror (E_INTERNAL_ERROR, __FILE__, __LINE__, "unsupported offset. addr > 64K");
+                    }
+                  else
+                    dbuf_printf (oBuf, "#0x00");
+                }
               else
-                dbuf_printf (oBuf, "#0x00");
+                {
+                  dbuf_printf (oBuf, "#0x00");
+                }
+
               if (i == (le ? (size - 1) : 0))
                 dbuf_printf (oBuf, "\n");
               else
@@ -1521,7 +1539,7 @@ printIvalCharPtr (symbol * sym, sym_link * type, value * val, struct dbuf_s *oBu
    */
   size = getSize (type);
 
-  if (val->name && strlen (val->name))
+  if (strlen (val->name))
     {
       if (size == 1)            /* This appears to be Z80 specific?? */
         {
@@ -2122,8 +2140,8 @@ createInterruptVect (struct dbuf_s *vBuf)
       return;
     }
 
-  dbuf_tprintf (vBuf, "\t!areacode\n", HOME_NAME);
-  dbuf_printf (vBuf, "__interrupt_vect:\n");
+  dbuf_tprintf (vBuf, "\t!areacode\n", ".interrupt_vectors");
+  //dbuf_printf (vBuf, "\t.global __interrupt_vect\n");
 
 
   if (!port->genIVT || !(port->genIVT (vBuf, interrupts, maxInterrupts)))
@@ -2174,7 +2192,10 @@ printPublics (FILE * afile)
           sprintf (buffer, "b%s", sym->rname);
           tfprintf (afile, "\t!global\n", buffer);
         }
-      tfprintf (afile, "\t!global\n", sym->rname);
+      /* do not export SFR as global symbol */
+      int typ = SPEC_SCLS (getSpec (sym->type));
+      if (typ != S_SFR && typ != S_SBIT)
+        tfprintf (afile, "\t!global\n", sym->rname);
     }
 }
 
@@ -2210,7 +2231,7 @@ emitOverlay (struct dbuf_s *aBuf)
       if (elementsInSet (ovrset))
         {
           /* output the area information */
-          dbuf_printf (aBuf, "\t.area\t%s\n", port->mem.overlay_name);  /* MOF */
+          dbuf_tprintf (aBuf, "\t!area\n", port->mem.overlay_name);  /* MOF */
         }
 
       for (sym = setFirstItem (ovrset); sym; sym = setNextItem (ovrset))
@@ -2387,33 +2408,34 @@ glue (void)
       /*JCF: Create the areas for the register banks */
       if (RegBankUsed[0] || RegBankUsed[1] || RegBankUsed[2] || RegBankUsed[3])
         {
-          fprintf (asmFile, "%s", iComments2);
-          fprintf (asmFile, "; overlayable register banks\n");
-          fprintf (asmFile, "%s", iComments2);
-          if (RegBankUsed[0])
-            fprintf (asmFile, "\t.area REG_BANK_0\t(REL,OVR,DATA)\n\t.ds 8\n");
-          if (RegBankUsed[1] || options.parms_in_bank1)
-            fprintf (asmFile, "\t.area REG_BANK_1\t(REL,OVR,DATA)\n\t.ds 8\n");
-          if (RegBankUsed[2])
-            fprintf (asmFile, "\t.area REG_BANK_2\t(REL,OVR,DATA)\n\t.ds 8\n");
-          if (RegBankUsed[3])
-            fprintf (asmFile, "\t.area REG_BANK_3\t(REL,OVR,DATA)\n\t.ds 8\n");
+          // fprintf (asmFile, "%s", iComments2);
+          // fprintf (asmFile, "; overlayable register banks\n");
+          // fprintf (asmFile, "%s", iComments2);
+          // if (RegBankUsed[0])
+          //   fprintf (asmFile, "\t.area REG_BANK_0\t(REL,OVR,DATA)\n\t.ds 8\n");
+          // if (RegBankUsed[1] || options.parms_in_bank1)
+          //   fprintf (asmFile, "\t.area REG_BANK_1\t(REL,OVR,DATA)\n\t.ds 8\n");
+          // if (RegBankUsed[2])
+          //   fprintf (asmFile, "\t.area REG_BANK_2\t(REL,OVR,DATA)\n\t.ds 8\n");
+          // if (RegBankUsed[3])
+          //   fprintf (asmFile, "\t.area REG_BANK_3\t(REL,OVR,DATA)\n\t.ds 8\n");
         }
       if (BitBankUsed)
         {
           fprintf (asmFile, "%s", iComments2);
           fprintf (asmFile, "; overlayable bit register bank\n");
           fprintf (asmFile, "%s", iComments2);
-          fprintf (asmFile, "\t.area BIT_BANK\t(REL,OVR,DATA)\n");
-          fprintf (asmFile, "bits:\n\t.ds 1\n");
-          fprintf (asmFile, "\tb0 = bits[0]\n");
-          fprintf (asmFile, "\tb1 = bits[1]\n");
-          fprintf (asmFile, "\tb2 = bits[2]\n");
-          fprintf (asmFile, "\tb3 = bits[3]\n");
-          fprintf (asmFile, "\tb4 = bits[4]\n");
-          fprintf (asmFile, "\tb5 = bits[5]\n");
-          fprintf (asmFile, "\tb6 = bits[6]\n");
-          fprintf (asmFile, "\tb7 = bits[7]\n");
+          // fprintf (asmFile, "\t.section .overlay.bitbank, \"aw\"\n");
+          // fprintf (asmFile, "bits:\n\t.ds.b 1\n");
+          // fprintf (asmFile, "\tb0 = bits[0]\n");
+          // fprintf (asmFile, "\tb1 = bits[1]\n");
+          // fprintf (asmFile, "\tb2 = bits[2]\n");
+          // fprintf (asmFile, "\tb3 = bits[3]\n");
+          // fprintf (asmFile, "\tb4 = bits[4]\n");
+          // fprintf (asmFile, "\tb5 = bits[5]\n");
+          // fprintf (asmFile, "\tb6 = bits[6]\n");
+          // fprintf (asmFile, "\tb7 = bits[7]\n");
+          fprintf (asmFile, "\t.global bits, b0, b1, b2, b3, b4, b5, b6, b7\n");
         }
     }
 
@@ -2457,7 +2479,7 @@ glue (void)
       fprintf (asmFile, "%s", iComments2);
       fprintf (asmFile, "; Stack segment in internal ram\n");
       fprintf (asmFile, "%s", iComments2);
-      tfprintf (asmFile, "\t!area\n" "__start__stack:\n\t.ds\t1\n\n", "SSEG");
+      // tfprintf (asmFile, "\t!area\n" "__start__stack:\n\t.ds.b\t1\n\n", ".stack");
     }
 
   /* create the idata segment */
@@ -2561,9 +2583,9 @@ glue (void)
    * the post_static_name area will immediately follow the static_name
    * area.
    */
-  tfprintf (asmFile, "\t!area\n", port->mem.home_name);
-  tfprintf (asmFile, "\t!area\n", port->mem.static_name);       /* MOF */
-  tfprintf (asmFile, "\t!area\n", port->mem.post_static_name);
+  // tfprintf (asmFile, "\t!area\n", port->mem.home_name);
+  // tfprintf (asmFile, "\t!area\n", port->mem.static_name);       /* MOF */
+  // tfprintf (asmFile, "\t!area\n", port->mem.post_static_name);
   tfprintf (asmFile, "\t!area\n", port->mem.static_name);
 
   if (mainf && IFFUNC_HASBODY (mainf->type))
@@ -2577,52 +2599,68 @@ glue (void)
           assert (0);
         }
     }
+
+  /**
+   * @brief 生成每个文件的全局/静态变量的初始化代码，比如以下片段
+    ```asm
+      ;	.\src\main.c:5: int a, b = 196, c = 283;
+        mov	_b,#0xc4
+        mov	(_b + 1),#0x00
+      ;	.\src\main.c:5: __bit d, e;
+        mov	_c,#0x1b
+        mov	(_c + 1),#0x01
+    ```
+    由于每个文件都会有这样的片段，我们将这些片段全部收集到一个 section 中，
+    然后一次执行完成，这样就能完成所有变量的初始化。（这和 gcc 有点不一样）
+   */
+  tfprintf (asmFile, "\t!area\n", ".init.1");
   dbuf_write_and_destroy (&statsg->oBuf, asmFile);
 
   /* STM8 / PDK14 note: there are no such instructions supported.
      Also, we don't need this logic as well. */
-  if (port->general.glue_up_main && mainf && IFFUNC_HASBODY (mainf->type))
-    {
-      /* This code is generated in the post-static area.
-       * This area is guaranteed to follow the static area
-       * by the ugly shucking and jiving about 20 lines ago.
-       */
-      tfprintf (asmFile, "\t!area\n", port->mem.post_static_name);
-      if(TARGET_IS_STM8)
-        fprintf (asmFile, options.model == MODEL_LARGE ? "\tjpf\t__sdcc_program_startup\n" : "\tjp\t__sdcc_program_startup\n");
-      else if (TARGET_IS_F8)
-        fprintf (asmFile, "\tjp\t#__sdcc_program_startup\n");
-      else if(TARGET_PDK_LIKE)
-        fprintf (asmFile, "\tgoto\t__sdcc_program_startup\n");
-      else
-        fprintf (asmFile, "\t%cjmp\t__sdcc_program_startup\n", options.acall_ajmp ? 'a' : 'l');
-    }
+  // if (port->general.glue_up_main && mainf && IFFUNC_HASBODY (mainf->type))
+  //   {
+  //     /* This code is generated in the post-static area.
+  //      * This area is guaranteed to follow the static area
+  //      * by the ugly shucking and jiving about 20 lines ago.
+  //      */
+  //     tfprintf (asmFile, "\t!area\n", port->mem.post_static_name);
+  //     if(TARGET_IS_STM8)
+  //       fprintf (asmFile, options.model == MODEL_LARGE ? "\tjpf\t__sdcc_program_startup\n" : "\tjp\t__sdcc_program_startup\n");
+  //     else if (TARGET_IS_F8)
+  //       fprintf (asmFile, "\tjp\t#__sdcc_program_startup\n");
+  //     else if(TARGET_PDK_LIKE)
+  //       fprintf (asmFile, "\tgoto\t__sdcc_program_startup\n");
+  //     else
+  //       fprintf (asmFile, "\t%cjmp\t__sdcc_program_startup\n", options.acall_ajmp ? 'a' : 'l');
+  //   }
 
   fprintf (asmFile, "%s" "; Home\n" "%s", iComments2, iComments2);
   tfprintf (asmFile, "\t!areahome\n", HOME_NAME);
   dbuf_write_and_destroy (&home->oBuf, asmFile);
 
-  if (mainf && IFFUNC_HASBODY (mainf->type))
-    {
-      /* STM8 note: there is no need to call main().
-         Instead of that, it's address is specified in the
-         interrupts table and always equals to 0x8080.
-       */
+  // if (mainf && IFFUNC_HASBODY (mainf->type))
+  //   {
+  //     /* STM8 note: there is no need to call main().
+  //        Instead of that, it's address is specified in the
+  //        interrupts table and always equals to 0x8080.
+  //      */
 
-      /* entry point @ start of HOME */
-      fprintf (asmFile, "__sdcc_program_startup:\n");
+  //     /* entry point @ start of HOME */
+  //     fprintf (asmFile, "__sdcc_program_startup:\n");
 
-      /* put in jump or call to main */
-      if(TARGET_IS_STM8)
-        fprintf (asmFile, options.model == MODEL_LARGE ? "\tjpf\t_main\n" : "\tjp\t_main\n");
-      else if(TARGET_IS_F8)
-        fprintf (asmFile, "\tjp\t#_main\n");
-      else if(TARGET_PDK_LIKE)
-        fprintf (asmFile, "\tgoto\t_main\n");
-      else
-        fprintf (asmFile, "\t%cjmp\t_main\n", options.acall_ajmp ? 'a' : 'l');        /* needed? */
-      fprintf (asmFile, ";\treturn from main will return to caller\n");
-    }
+  //     /* put in jump or call to main */
+  //     if(TARGET_IS_STM8)
+  //       fprintf (asmFile, options.model == MODEL_LARGE ? "\tjpf\t_main\n" : "\tjp\t_main\n");
+  //     else if(TARGET_IS_F8)
+  //       fprintf (asmFile, "\tjp\t#_main\n");
+  //     else if(TARGET_PDK_LIKE)
+  //       fprintf (asmFile, "\tgoto\t_main\n");
+  //     else
+  //       fprintf (asmFile, "\t%cjmp\t_main\n", options.acall_ajmp ? 'a' : 'l');        /* needed? */
+  //     fprintf (asmFile, ";\treturn from main will return to caller\n");
+  //   }
+
   /* copy over code */
   fprintf (asmFile, "%s", iComments2);
   fprintf (asmFile, "; code\n");

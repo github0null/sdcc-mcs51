@@ -132,8 +132,7 @@ _modsint_dummy (void) __naked
 	#define a0	dpl
 	#define a1	dph
 
-	ar0 = 0			; BUG register set is not considered
-	ar1 = 1
+	.using 0 ; BUG register set is not considered
 
 	.globl __modsint
 

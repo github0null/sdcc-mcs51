@@ -27,51 +27,41 @@
 ;  might be covered by the GNU General Public License.
 ;--------------------------------------------------------------------------
 
-	.area HOME    (CODE)
-	.area GSINIT0 (CODE)
-	.area GSINIT1 (CODE)
-	.area GSINIT2 (CODE)
-	.area GSINIT3 (CODE)
-	.area GSINIT4 (CODE)
-	.area GSINIT5 (CODE)
-	.area GSINIT  (CODE)
-	.area GSFINAL (CODE)
-	.area CSEG    (CODE)
-
-	.area HOME    (CODE)
-
-	ar0 = 0x00
-
 ; This relies on the restartable implementations being aligned properly.
 
-sdcc_atomic_maybe_rollback::
+	.global sdcc_atomic_maybe_rollback
+	.global sdcc_atomic_exchange_rollback_start
+
+	.section .text.sdcc_atomic_maybe_rollback, "ax"
+	.using 0
+sdcc_atomic_maybe_rollback:
 	push ar0
 	mov  r0, SP
 	dec  r0
 	push psw
-	cjne @r0, #>sdcc_atomic_exchange_rollback_start, 4$
+	cjne @r0, #hi_(sdcc_atomic_exchange_rollback_start), .L4
 	dec  r0
-	cjne @r0, #<sdcc_atomic_exchange_rollback_start, 0$
-0$:
-	jc   4$
-	cjne @r0, #<sdcc_atomic_exchange_rollback_end, 1$
-1$:
-	jnc  4$
+	cjne @r0, #lo_(sdcc_atomic_exchange_rollback_start), .L0
+.L0:
+	jc   .L4
+	cjne @r0, #lo_(sdcc_atomic_exchange_rollback_end), .L1
+.L1:
+	jnc  .L4
 	; we now know the interrupted routine was somewhere among the
 	; restartable implementations of atomic functions.
 	push acc
 	mov  a, @r0
 	anl  a, #0x07
-	cjne a, #6, 2$
-2$:
-	jnc  3$
+	cjne a, #6, .L2
+.L2:
+	jnc  .L3
 	; we actually need to restart.
 	mov  a, @r0
 	anl  a, #0xf8
 	mov  @r0, a
-3$:	; inner skip
+.L3:	; inner skip
 	pop acc
-4$:	; outer skip
+.L4:	; outer skip
 	pop psw
 	pop ar0
 	reti

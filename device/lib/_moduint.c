@@ -63,8 +63,7 @@ __moduint:
 
 #if defined(__SDCC_STACK_AUTO) && !defined(__SDCC_PARMS_IN_BANK1)
 
-	ar0 = 0			; BUG register set is not considered
-	ar1 = 1
+	.using 0 ; BUG register set is not considered
 
 	.globl __modint
 

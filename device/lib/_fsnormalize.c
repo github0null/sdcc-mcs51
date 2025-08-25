@@ -42,11 +42,11 @@ fs_normalize_a:
 #ifdef FLOAT_SHIFT_SPEEDUP
 	mov	r0, #4
 	mov	a, r4
-00001$:
-	jnz	00003$
+.L00001:
+	jnz	.L00003
 	mov	a, exp_a
 	add	a, #248
-	jnc	00002$	;denormalized
+	jnc	.L00002	;denormalized
 	mov	exp_a, a
 	clr	a
 	xch	a, r1
@@ -57,19 +57,19 @@ fs_normalize_a:
 	//mov	r3, ar2
 	//mov	r2, ar1
 	//mov	r1, #0
-	djnz	r0, 00001$
+	djnz	r0, .L00001
 	ret
 #endif
-00002$:
+.L00002:
 	mov	a, r4
-00003$:
+.L00003:
 	mov	r0, #32
 	inc	exp_a
-00004$:
-	jb	acc.7, 00006$
-	djnz	exp_a, 00005$
+.L00004:
+	jb	acc.7, .L00006
+	djnz	exp_a, .L00005
 	ret			;denormalized
-00005$:
+.L00005:
 	clr	c
 	mov	a, r1
 	rlc	a
@@ -83,8 +83,8 @@ fs_normalize_a:
 	mov	a, r4
 	rlc	a
 	mov	r4, a
-	djnz	r0, 00004$
-00006$:
+	djnz	r0, .L00004
+.L00006:
 	dec	exp_a
 	ret
 	__endasm;

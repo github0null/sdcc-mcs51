@@ -64,14 +64,14 @@
       ;
 
       ; while ( *ptr ) ptr++;
-    L00101$:
+    .L00101_strlen:
       lcall   __gptrget
-      jz      L00102$
+      jz      .L00102_strlen
       inc     dptr
-      sjmp    L00101$
+      sjmp    .L00101_strlen
       ;
 
-    L00102$:
+    .L00102_strlen:
       ; return ptr - str;
       clr     c
       mov     a,dpl

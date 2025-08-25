@@ -48,44 +48,44 @@ ___fsmul:
 	lcall	fsgetargs
 
 	// first check if either input is zero
-	cjne	r4, #0, 00002$
-00001$:
+	cjne	r4, #0, .L00002
+.L00001:
 	ljmp	fs_return_zero
 
-00002$:
+.L00002:
 	mov	a, r7
-	jz	00001$
+	jz	.L00001
 
 	// compute final sign bit
-	jnb	sign_b, 00003$
+	jnb	sign_b, .L00003
 	cpl	sign_a
-00003$:
+.L00003:
 
 	// check if either input is infinity
 	mov	a, exp_b
-	cjne	a, #0xFF, 00004$
+	cjne	a, #0xFF, .L00004
 	ljmp	fs_return_inf
-00004$:
+.L00004:
 	mov	a, exp_a
-	cjne	a, #0xFF, 00005$
+	cjne	a, #0xFF, .L00005
 	ljmp	fs_return_inf
-00005$:
+.L00005:
 
 	// add the exponents
 	add	a, exp_b
 	// if carry then no underflow
-	jc	00006$
+	jc	.L00006
 	add	a, #130
-	jc	00007$
+	jc	.L00007
 	ljmp	fs_return_zero
 
-00006$:
+.L00006:
 	add	a, #131
 	dec	a
-	jnc	00007$
+	jnc	.L00007
 	ljmp	fs_return_inf
 
-00007$:
+.L00007:
 	mov	exp_a, a
 
 	// now we need to multiply r4/r3/r2 * r7/r6/r5
@@ -203,10 +203,10 @@ ___fsmul:
 	mov	r4, a
 	// range 40000000-FFFFFE00
 
-	jb	acc.7, 00010$
+	jb	acc.7, .L00010
 	lcall	fs_normalize_a
 
-00010$:
+.L00010:
 	ljmp	fs_round_and_return
 	__endasm;
 }

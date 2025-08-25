@@ -39,40 +39,33 @@
 void _fs_cordic_rshift_r765_unsigned(void) __naked
 {
 	__asm
-	ar2 = 0x02
-	ar3 = 0x03
-	ar4 = 0x04
-	ar5 = 0x05
-	ar6 = 0x06
-	ar7 = 0x07
-	ar0 = 0x00
-	ar1 = 0x01
+	.using 0
 
 	add	a, #248
-	jnc	00003$
+	jnc	.L00003
 	mov	b, r5
 	mov	r5, ar6
 	mov	r6, ar7
 	mov	r7, #0
 	add	a, #248
-	jnc	00003$
+	jnc	.L00003
 	mov	b, r5
 	mov	r5, ar6
 	mov	r6, #0
 	add	a, #248
-	jnc	00003$
+	jnc	.L00003
 	mov	b, r5
 	mov	r5, #0
 	add	a, #248
-	jnc	00003$
+	jnc	.L00003
 	mov	b, #0
 	ret
-00003$:
+.L00003:
 	add	a, #8
-	jz	00030$
+	jz	.L00030
 	push	ar0
 	mov	r0, a
-00010$:
+.L00010:
 	clr	c
 	mov	a, r7
 	rrc	a
@@ -86,9 +79,9 @@ void _fs_cordic_rshift_r765_unsigned(void) __naked
 	mov	a, b
 	rrc	a
 	mov	b, a
-	djnz	r0, 00010$
+	djnz	r0, .L00010
 	pop	ar0
-00030$:
+.L00030:
 	ret
 	__endasm;
 }

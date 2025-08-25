@@ -604,9 +604,9 @@ printf_uint8a:
 	pop	dph
 	pop	dpl
 #ifdef FLOAT
-	jnb	_continue_float, 0002$
+	jnb	_continue_float, .L0002
 	ret
-0002$:
+.L0002:
 #endif
 	ljmp	printf_main_loop
 

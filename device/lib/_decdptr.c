@@ -41,9 +41,9 @@ __decdptr:
         anl     dps, #0x3f
 #else
         xch     a,dpl
-        jnz     00001$
+        jnz     .L00001
         dec     dph
-00001$:
+.L00001:
         dec     a
         xch     a,dpl
 #endif

@@ -50,36 +50,36 @@ _gptrput (char *gptr, char c) __naked
     ;
     ;   depending on the pointer type according to SDCCsymt.h
     ;
-        jb      _B_7,codeptr$        ; >0x80 code       ; 3
-        jnb     _B_6,xdataptr$       ; <0x40 far        ; 3
+        jb      _B_7,.L00codeptr        ; >0x80 code       ; 3
+        jnb     _B_6,.L00xdataptr       ; <0x40 far        ; 3
 
         mov     dph,r0 ; save r0 independent of regbank ; 2
         mov     r0,dpl ; use only low order address     ; 2
 
-        jb      _B_5,pdataptr$       ; >0x60 pdata      ; 3
+        jb      _B_5,.L00pdataptr       ; >0x60 pdata      ; 3
     ;
     ;   store into near/idata space
     ;
         mov     @r0,a                                   ; 1
- dataptrrestore$:
+ .L00dataptrrestore:
         mov     r0,dph ; restore r0                     ; 2
         mov     dph,#0 ; restore dph                    ; 3
         ret                                             ; 1
     ;
     ;   cannot store into code space, lock up
     ;
- codeptr$:
+ .L00codeptr:
         sjmp    .                                       ; 2
     ;
     ;   store into external stack/pdata space
     ;
- pdataptr$:
+ .L00pdataptr:
         movx    @r0,a                                   ; 1
-        sjmp    dataptrrestore$                         ; 2
+        sjmp    .L00dataptrrestore                         ; 2
     ;
     ;   store into far space
     ;
- xdataptr$:
+ .L00xdataptr:
         mov     _P3,b                                   ; 3
 
         movx    @dptr,a                                 ; 1
@@ -105,35 +105,35 @@ _gptrput (char *gptr, char c) __naked
     ;   depending on the pointer type according to SDCCsymt.h
     ;
         mov     b,dph                                   ; 3
-        jb      _B_7,codeptr$        ; >0x80 code       ; 3
-        jnb     _B_6,xdataptr$       ; <0x40 far        ; 3
-        jb      _B_5,pdataptr$       ; >0x60 pdata      ; 3
+        jb      _B_7,.L00codeptr        ; >0x80 code       ; 3
+        jnb     _B_6,.L00xdataptr       ; <0x40 far        ; 3
+        jb      _B_5,.L00pdataptr       ; >0x60 pdata      ; 3
     ;
     ;   store into near/idata space
     ;
         mov     b,r0   ; save r0 independent of regbank ; 2
         mov     r0,dpl ; use only low order address     ; 2
         mov     @r0,a                                   ; 1
- dataptrrestore$:
+ .L00dataptrrestore:
         mov     r0,b   ; restore r0                     ; 2
         ret                                             ; 1
     ;
     ;   cannot store into code space, lock up
     ;
- codeptr$:
+ .L00codeptr:
         sjmp    .                                       ; 2
     ;
     ;   store into external stack/pdata space
     ;
- pdataptr$:
+ .L00pdataptr:
         mov     b,r0   ; save r0 independent of regbank ; 2
         mov     r0,dpl ; use only low order address     ; 2
         movx    @r0,a                                   ; 1
-        sjmp    dataptrrestore$                         ; 2
+        sjmp    .L00dataptrrestore                         ; 2
     ;
     ;   store into far space, max 14 bits
     ;
- xdataptr$:
+ .L00xdataptr:
     ; 0 <= dptr <= 0x3FFF
         movx    @dptr,a                                 ; 1
         ret                                             ; 1
@@ -156,36 +156,36 @@ _gptrput (char *gptr, char c) __naked
     ;
     ;   depending on the pointer type according to SDCCsymt.h
     ;
-        jb      _B_7,codeptr$        ; >0x80 code       ; 3
-        jnb     _B_6,xdataptr$       ; <0x40 far        ; 3
+        jb      _B_7,.L00codeptr        ; >0x80 code       ; 3
+        jnb     _B_6,.L00xdataptr       ; <0x40 far        ; 3
 
         mov     dph,r0 ; save r0 independent of regbank ; 2
         mov     r0,dpl ; use only low order address     ; 2
 
-        jb      _B_5,pdataptr$       ; >0x60 pdata      ; 3
+        jb      _B_5,.L00pdataptr       ; >0x60 pdata      ; 3
     ;
     ;   store into near/idata space
     ;
         mov     @r0,a                                   ; 1
- dataptrrestore$:
+ .L00dataptrrestore:
         mov     r0,dph ; restore r0                     ; 2
         mov     dph,#0 ; restore dph                    ; 3
         ret                                             ; 1
     ;
     ;   cannot store into code space, lock up
     ;
- codeptr$:
+ .L00codeptr:
         sjmp    .                                       ; 2
     ;
     ;   store into external stack/pdata space
     ;
- pdataptr$:
+ .L00pdataptr:
         movx    @r0,a                                   ; 1
-        sjmp    dataptrrestore$                         ; 2
+        sjmp    .L00dataptrrestore                         ; 2
     ;
     ;   store into far space
     ;
- xdataptr$:
+ .L00xdataptr:
         movx    @dptr,a                                 ; 1
         ret                                             ; 1
 
@@ -210,20 +210,20 @@ _gptrputWord (int *gptr, int w) __naked
     ;
     ;   depending on the pointer type acc. to SDCCsymt.h
     ;
-        jb      _B_7,codeptr_w$       ; >0x80 code
-        jnb     _B_6,xdataptr_w$      ; <0x40 far
+        jb      _B_7,.Lcodeptr_w       ; >0x80 code
+        jnb     _B_6,.Lxdataptr_w      ; <0x40 far
 
         mov     dph,r0 ; save r0 independent of regbank
         mov     r0,dpl ; use only low order address
 
-        jb      _B_5,pdataptr_w$      ; >0x60 pdata
+        jb      _B_5,.Lpdataptr_w      ; >0x60 pdata
 ;
 ;       store into near space
 ;
         mov     @r0,acc1
         inc     r0
         mov     @r0,a
- dataptrrestore_w$:
+ .Ldataptrrestore_w:
         mov     dpl,r0
         mov     r0,dph ; restore r0
         mov     dph,#0 ; restore dph
@@ -231,22 +231,22 @@ _gptrputWord (int *gptr, int w) __naked
     ;
     ;   cannot store into code space, lock up
     ;
- codeptr_w$:
+ .Lcodeptr_w:
         sjmp    .
 ;
 ;       store into xstack space
 ;
- pdataptr_w$:
+ .Lpdataptr_w:
         xch     a,acc1
         movx    @r0,a
         inc     r0
         xch     a,acc1
         movx    @r0, a
-        sjmp    dataptrrestore_w$
+        sjmp    .Ldataptrrestore_w
 ;
 ;       store into far space
 ;
- xdataptr_w$:
+ .Lxdataptr_w:
         xch     a,acc1
         movx    @dptr,a
         inc     dptr

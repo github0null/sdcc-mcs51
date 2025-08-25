@@ -18,21 +18,34 @@
 # define ADDRESS(x) (0xCA ## x)
 #endif
 
-/* This produces incorrect code */
-#define REG_1 (*(__xdata unsigned char*)ADDRESS(00))
-
+#ifdef __SDCC_GNU_AS
+extern __xdata unsigned char REG_1_RES; // 0xCA00
+extern __xdata unsigned char REG_2;	// 0xCA01
+void dummy()
+{
+	__asm
+    .globl _REG_1_RES, _REG_2
+    .section .xdata, "aw"
+    .equ _REG_1_RES, 0xCA00
+    .equ _REG_2, 0xCA01
+	__endasm;
+}
+#else
 // Absolute addresses should use an initial value to make sure compiler does not use these addresses.
 // From manual: If you provide an initializer actual memory allocation will take place and overlaps will be detected by the linker
 __xdata unsigned char  __at(ADDRESS(00)) REG_1_RES = 0;
+/* This produces correct code */
+__xdata unsigned char __at(ADDRESS(01)) REG_2 = 0;
+#endif
+
+/* This produces incorrect code */
+#define REG_1 (*(__xdata unsigned char*)ADDRESS(00))
 
 void incorrect(void)
 {
 	REG_1 |= 1;
 	REG_1 |= 2;
 }
-
-/* This produces correct code */
-__xdata unsigned char __at(ADDRESS(01)) REG_2 = 0;
 
 void correct(void)
 {

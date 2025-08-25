@@ -883,13 +883,10 @@ if test $OPT_DISABLE_MOS6502 = 0 || test $OPT_DISABLE_MOS65C02 = 0; then
 fi
 
 if test $OPT_DISABLE_MCS51 = 0; then
-  AC_CONFIG_FILES([src/mcs51/Makefile
-                   sdas/as8051/Makefile])
+  AC_CONFIG_FILES([src/mcs51/Makefile])
   test $OPT_DISABLE_DEVICE_LIB = 0 && AC_CONFIG_FILES([device/lib/mcs51/Makefile
                                                        device/lib/small/Makefile
-                                                       device/lib/medium/Makefile
-                                                       device/lib/large/Makefile
-                                                       device/lib/huge/Makefile])
+                                                       device/lib/large/Makefile])
 fi
 
 if test $OPT_DISABLE_PIC14 = 0; then

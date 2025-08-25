@@ -52,6 +52,7 @@ static OPTION _mcs51_options[] =
     { 0, OPTION_STACK_SIZE,  &options.stack_size, "Tells the linker to allocate this space for stack", CLAT_INTEGER },
     { 0, "--acall-ajmp",     &options.acall_ajmp, "Use acall/ajmp instead of lcall/ljmp" },
     { 0, "--no-ret-without-call", &options.no_ret_without_call, "Do not use ret independent of acall/lcall" },
+    { 0, "--no-map-and-disasm", &options.no_map_and_disasm, "Do not output .map and disasm"},
     { 0, NULL }
   };
 
@@ -96,7 +97,7 @@ extern void mcs51_init_asmops (void);
 static void
 _mcs51_init (void)
 {
-  asm_addTree (&asm_asxxxx_mapping);
+  asm_addTree (&asm_gas_mapping);
   mcs51_init_asmops ();
 }
 
@@ -151,8 +152,10 @@ _mcs51_parseOptions (int *pargc, char **argv, int *i)
 static void
 _mcs51_finaliseOptions (void)
 {
-  if (options.noXinitOpt)
+  if (options.noXinitOpt) {
+    fprintf(stdout, "warning: ignored --no-xinit-opt option.\n");
     port->genXINIT=0;
+  }
 
   switch (options.model)
     {
@@ -177,6 +180,50 @@ _mcs51_finaliseOptions (void)
       port->mem.default_globl_map = data;
       break;
     }
+
+  if (options.useXstack)
+    {
+      fprintf(stderr,"error: --xstack is not supported\n");
+      exit(1);
+    }
+  if (options.acall_ajmp)
+    {
+      fprintf(stderr,"error: --acall-ajmp is not supported\n");
+      exit(1);
+    }
+
+  // force enable options for mcs51:
+  //  --nooverlay: make local variable and function parameters not overlap
+  //  --stack-auto: All functions in the source file will be compiled as reentrant, 
+  //                i.e. the parameters and local variables will be allocated on the stack.
+  // options.noOverlay = 1;
+  // options.stackAuto = 1;
+  int options_failed = 0;
+  if (options.noOverlay == 0) {
+    fprintf(stderr, "option: --nooverlay is required.\n");
+    options_failed = 1;
+  }
+  if (options.stackAuto == 0) {
+    fprintf(stderr, "option: --stack-auto is required.\n");
+    options_failed = 1;
+  }
+  if (options.model == MODEL_HUGE) {
+    fprintf(stderr, "option: --model-huge is not supported.\n");
+    options_failed = 1;
+  }
+  if (options.debug) {
+    fprintf(stderr, "option: --debug is not supported.\n");
+    options_failed = 1;
+  }
+  if (options.xram_size > 0 && options.xram_size < 256) {
+    fprintf(stderr, "option: --xram-size must larger than 255 if not equal to 0.\n");
+    options_failed = 1;
+  }
+  if (options_failed)
+    exit (EXIT_FAILURE);
+
+  /* add predefined macros */
+  addSet (&preArgvSet, Safe_strdup ("-D__SDCC_GNU_AS"));
 
   /* mcs51 has an assembly coded float library that's almost always reentrant */
   if (!options.useXstack)
@@ -208,7 +255,7 @@ _mcs51_genAssemblerStart (FILE * of)
 {
   if (!options.noOptsdccInAsm)
     {
-      fprintf (of, "\t.optsdcc -m%s", port->target);
+      fprintf (of, "\t.ident \"-m%s", port->target);
 
       switch (options.model)
         {
@@ -239,7 +286,7 @@ _mcs51_genAssemblerStart (FILE * of)
         fprintf (of, " --no-reg-params");
       if (options.all_callee_saves)
         fprintf (of, " --all-callee-saves");
-      fprintf (of, "\n");
+      fprintf (of, "\"\n");
     }
 }
 
@@ -255,17 +302,18 @@ mcs51_genAtomicSupport (struct dbuf_s *oBuf, unsigned int startaddr)
   // Support routines need to start on 8B boundary.
   if (startaddr % 8)
     {
-      dbuf_printf (oBuf, "\t.ds\t%d\n", 8 - startaddr % 8);
+      dbuf_printf (oBuf, "\t.ds.b\t%d\n", 8 - startaddr % 8);
       startaddr += (8 - startaddr % 8);
     }
   // Support routine block may not cross 256B boundary.
   if (startaddr / 256 != (startaddr + 8 * 4 + 7) / 256)
     {
-      dbuf_printf (oBuf, "\t.ds\t%d\n", 256 - startaddr % 256);
+      dbuf_printf (oBuf, "\t.ds.b\t%d\n", 256 - startaddr % 256);
       startaddr += 256 - startaddr % 256;
     }
 
-  dbuf_printf (oBuf, "sdcc_atomic_exchange_rollback_start::\n");
+  dbuf_printf (oBuf, "\t.globl sdcc_atomic_exchange_rollback_start\n");
+  dbuf_printf (oBuf, "sdcc_atomic_exchange_rollback_start:\n");
 
   // Each routine (except the last one) needs to be 8 bytes long.
   // Restart may happen at bytes 1 to 5 of each routine.
@@ -286,32 +334,37 @@ mcs51_genAtomicSupport (struct dbuf_s *oBuf, unsigned int startaddr)
                      "\tmovx\t@dptr, a\n"
                      "\tsjmp\tsdcc_atomic_exchange_exit\n");
   dbuf_printf (oBuf, "sdcc_atomic_compare_exchange_idata_impl:\n"
+                     "\t.using 0\n"
                      "\tmov\ta, @r0\n"
-                     "\tcjne\ta, ar2, .+#5\n"
+                     "\tcjne\ta, ar2, .+5\n"
                      "\tmov\ta, r3\n"
                      "\tmov\t@r0, a\n"
                      "\tret\n"
                      "\tnop\n");
   dbuf_printf (oBuf, "sdcc_atomic_compare_exchange_pdata_impl:\n"
+                     "\t.using 0\n"
                      "\tmovx\ta, @r0\n"
-                     "\tcjne\ta, ar2, .+#5\n"
+                     "\tcjne\ta, ar2, .+5\n"
                      "\tmov\ta, r3\n"
                      "\tmovx\t@r0, a\n"
                      "\tret\n"
                      "\tnop\n");
   dbuf_printf (oBuf, "sdcc_atomic_compare_exchange_xdata_impl:\n"
+                     "\t.using 0\n"
                      "\tmovx\ta, @dptr\n"
-                     "\tcjne\ta, ar2, .+#5\n"
+                     "\tcjne\ta, ar2, .+5\n"
                      "\tmov\ta, r3\n"
                      "\tmovx\t@dptr, a\n"
                      "\tret\n");
-  dbuf_printf (oBuf, "sdcc_atomic_exchange_rollback_end::\n\n");
+  dbuf_printf (oBuf, "\t.globl sdcc_atomic_exchange_rollback_end\n");
+  dbuf_printf (oBuf, "sdcc_atomic_exchange_rollback_end:\n\n");
 
   // The following two routines just need to be in jnb range of the above ones, they don't have alignment requirements.
 
   // Store value in r2 into byte at b:dptr, return previous byte at b:dptr in dpl.
   // Overwrites r0, r2, r3.
-  dbuf_printf (oBuf, "sdcc_atomic_exchange_gptr_impl::\n"
+  dbuf_printf (oBuf, "\t.globl sdcc_atomic_exchange_gptr_impl\n");
+  dbuf_printf (oBuf, "sdcc_atomic_exchange_gptr_impl:\n"
                      "\tjnb\tb.6, sdcc_atomic_exchange_xdata_impl\n"
                      "\tmov\tr0, dpl\n"
                      "\tjb\tb.5, sdcc_atomic_exchange_pdata_impl\n"
@@ -327,7 +380,8 @@ mcs51_genAtomicSupport (struct dbuf_s *oBuf, unsigned int startaddr)
   // If the value of the byte at b:dptr is the value of r2, store the value
   // of r3 into that byte. Return the new value of that byte in a.
   // Overwrites r0, r2, r3.
-  dbuf_printf (oBuf, "sdcc_atomic_compare_exchange_gptr_impl::\n"
+  dbuf_printf (oBuf, "\t.globl sdcc_atomic_compare_exchange_gptr_impl\n");
+  dbuf_printf (oBuf, "sdcc_atomic_compare_exchange_gptr_impl:\n"
                      "\tjnb\tb.6, sdcc_atomic_compare_exchange_xdata_impl\n"
                      "\tmov\tr0, dpl\n"
                      "\tjb\tb.5, sdcc_atomic_compare_exchange_pdata_impl\n"
@@ -341,11 +395,11 @@ _mcs51_genIVT (struct dbuf_s *oBuf, symbol **interrupts, int maxInterrupts)
   int i;
   unsigned int nextbyteaddr;
 
-  dbuf_printf (oBuf, "\t%cjmp\t__sdcc_gsinit_startup\n", options.acall_ajmp?'a':'l');
+  dbuf_printf (oBuf, "\t%cjmp\t__sdcc_startup\n", options.acall_ajmp?'a':'l');
   nextbyteaddr = options.acall_ajmp ? 2 : 3;
   if(options.acall_ajmp && maxInterrupts)
     {
-      dbuf_printf (oBuf, "\t.ds\t1\n");
+      dbuf_printf (oBuf, "\t.ds.b\t1\n");
       nextbyteaddr += 1;
     }
 
@@ -358,7 +412,7 @@ _mcs51_genIVT (struct dbuf_s *oBuf, symbol **interrupts, int maxInterrupts)
           nextbyteaddr += options.acall_ajmp ? 2 : 3;
           if ( i != maxInterrupts - 1 )
             {
-              dbuf_printf (oBuf, "\t.ds\t%d\n", options.acall_ajmp ? 6 : 5);
+              dbuf_printf (oBuf, "\t.ds.b\t%d\n", options.acall_ajmp ? 6 : 5);
               nextbyteaddr += options.acall_ajmp ? 6 : 5;
             }
         }
@@ -368,7 +422,7 @@ _mcs51_genIVT (struct dbuf_s *oBuf, symbol **interrupts, int maxInterrupts)
           nextbyteaddr += 1;
           if ( i != maxInterrupts - 1 )
             {
-              dbuf_printf (oBuf, "\t.ds\t7\n");
+              dbuf_printf (oBuf, "\t.ds.b\t7\n");
               nextbyteaddr += 7;
             }
         }
@@ -382,30 +436,30 @@ _mcs51_genIVT (struct dbuf_s *oBuf, symbol **interrupts, int maxInterrupts)
 static void
 _mcs51_genExtraAreas(FILE *of, bool hasMain)
 {
-  tfprintf (of, "\t!area\n", HOME_NAME);
-  tfprintf (of, "\t!area\n", "GSINIT0 (CODE)");
-  tfprintf (of, "\t!area\n", "GSINIT1 (CODE)");
-  tfprintf (of, "\t!area\n", "GSINIT2 (CODE)");
-  tfprintf (of, "\t!area\n", "GSINIT3 (CODE)");
-  tfprintf (of, "\t!area\n", "GSINIT4 (CODE)");
-  tfprintf (of, "\t!area\n", "GSINIT5 (CODE)");
-  tfprintf (of, "\t!area\n", STATIC_NAME);
-  tfprintf (of, "\t!area\n", port->mem.post_static_name);
-  tfprintf (of, "\t!area\n", CODE_NAME);
+  // tfprintf (of, "\t!area\n", HOME_NAME);
+  // tfprintf (of, "\t!area\n", "GSINIT0 (CODE)");
+  // tfprintf (of, "\t!area\n", "GSINIT1 (CODE)");
+  // tfprintf (of, "\t!area\n", "GSINIT2 (CODE)");
+  // tfprintf (of, "\t!area\n", "GSINIT3 (CODE)");
+  // tfprintf (of, "\t!area\n", "GSINIT4 (CODE)");
+  // tfprintf (of, "\t!area\n", "GSINIT5 (CODE)");
+  // tfprintf (of, "\t!area\n", STATIC_NAME);
+  // tfprintf (of, "\t!area\n", port->mem.post_static_name);
+  // tfprintf (of, "\t!area\n", CODE_NAME);
 }
 
 static void
 _mcs51_genInitStartup (FILE *of)
 {
-  tfprintf (of, "\t!global\n", "__sdcc_gsinit_startup");
-  tfprintf (of, "\t!global\n", "__sdcc_program_startup");
+  tfprintf (of, "\t!global\n", "__sdcc_startup");
+  //tfprintf (of, "\t!global\n", "__sdcc_program_startup");
   tfprintf (of, "\t!global\n", "__start__stack");
 
-  if (options.useXstack)
-    {
-      tfprintf (of, "\t!global\n", "__sdcc_init_xstack");
-      tfprintf (of, "\t!global\n", "__start__xstack");
-    }
+  // if (options.useXstack)
+  //   {
+  //     tfprintf (of, "\t!global\n", "__sdcc_init_xstack");
+  //     tfprintf (of, "\t!global\n", "__start__xstack");
+  //   }
 
   // if the port can copy the XINIT segment to XISEG
   if (port->genXINIT)
@@ -413,18 +467,18 @@ _mcs51_genInitStartup (FILE *of)
       port->genXINIT(of);
     }
 
-  if (!getenv("SDCC_NOGENRAMCLEAR"))
-    tfprintf (of, "\t!global\n", "__mcs51_genRAMCLEAR");
+  // if (!getenv("SDCC_NOGENRAMCLEAR"))
+  //   tfprintf (of, "\t!global\n", "__mcs51_genRAMCLEAR");
 }
 
 
 /* Generate code to copy XINIT to XISEG */
 static void _mcs51_genXINIT (FILE * of)
 {
-  tfprintf (of, "\t!global\n", "__mcs51_genXINIT");
+  // tfprintf (of, "\t!global\n", "__mcs51_genXINIT");
 
-  if (!getenv("SDCC_NOGENRAMCLEAR"))
-    tfprintf (of, "\t!global\n", "__mcs51_genXRAMCLEAR");
+  // if (!getenv("SDCC_NOGENRAMCLEAR"))
+  //   tfprintf (of, "\t!global\n", "__mcs51_genXRAMCLEAR");
 }
 
 
@@ -954,6 +1008,135 @@ get_model (void)
   return models[index];
 }
 
+static void doLink()
+{
+  int ret;
+  struct dbuf_s dbuf;
+  const char *s;
+  const char *elfpath;
+  const char *elfPathWithoutExt;
+
+  /*
+  $(LD) --oformat=elf32-i51 --no-check-sections --gc-sections --print-memory-usage \
+		--defsym=__XDATA_SIZE__=1024 --defsym=__FLASH_SIZE__=16K \
+		-Map main.map \
+		-L$(LIBDIR) -o $@ $^ --start-group -lsdcc -lmcs51 -lint -llong -llonglong -lfloat --end-group
+  */
+  dbuf_init (&dbuf, 8192);
+
+  dbuf_append_str (&dbuf,
+  "i51-elf-ld --oformat=elf32-i51 --no-check-sections --gc-sections");
+
+  if (fullDstFileName)
+    {
+      struct dbuf_s filePathWithoutExt, tmpBuf;
+
+      dbuf_init (&filePathWithoutExt, PATH_MAX);
+      dbuf_splitFile (fullDstFileName, &filePathWithoutExt, NULL);
+
+      dbuf_init (&tmpBuf, PATH_MAX);
+      dbuf_printf (&tmpBuf, "%s.elf", dbuf_c_str (&filePathWithoutExt));
+      elfpath = dbuf_detach_c_str (&tmpBuf);
+      elfPathWithoutExt = dbuf_detach_c_str (&filePathWithoutExt);
+    }
+  else
+    {
+      elfpath = "a.elf";
+      elfPathWithoutExt = "a";
+    }
+
+  if (!options.no_map_and_disasm)
+    dbuf_printf (&dbuf, " -Map \"%s.map\"", elfPathWithoutExt);
+
+  if (options.iram_size > 0)
+    dbuf_printf (&dbuf, " --defsym=__IDATA_SIZE__=%d", options.iram_size);
+  if (options.xram_size > 0)
+    dbuf_printf (&dbuf, " --defsym=__XDATA_SIZE__=%d", options.xram_size);
+  if (options.code_size > 0)
+    dbuf_printf (&dbuf, " --defsym=__FLASH_SIZE__=%d", options.code_size);
+
+  /* standard library path */
+  if (!options.nostdlib)
+    {
+      for (s = setFirstItem (libDirsSet); s != NULL; s = setNextItem (libDirsSet))
+        dbuf_printf (&dbuf, " -L\"%s\"", s);
+    }
+  else
+    {
+      /* We need link libmcs51.a always, so we need this. */
+      struct dbuf_s defLibPath;
+      dbuf_init (&defLibPath, PATH_MAX);
+      dbuf_append_str (&defLibPath, sdccBinPath);
+      dbuf_append_str (&defLibPath, BIN2DATA_DIR);
+      const char *target = port->general.get_model ? port->general.get_model () : port->target;
+      dbuf_makePath (&defLibPath, LIB_DIR_SUFFIX, target);
+      dbuf_printf (&dbuf, " -L\"%s\"", dbuf_c_str(&defLibPath));
+      dbuf_destroy(&defLibPath);
+    }
+
+  for (s = setFirstItem (libPathsSet); s != NULL; s = setNextItem (libPathsSet))
+    dbuf_printf (&dbuf, " -L\"%s\"", s);
+
+  dbuf_printf (&dbuf, " -o \"%s\"", elfpath);
+
+  /* put in the object file, generated from the C cource */
+  if (fullSrcFileName)
+    {
+      struct dbuf_s path;
+      dbuf_init (&path, PATH_MAX);
+      dbuf_printf (&path, "%s%s", dstFileName, port->linker.rel_ext);
+      addSetHead (&relFilesSet, dbuf_detach (&path));
+    }
+
+  /* put in all .o files */
+  for (s = setFirstItem (relFilesSet); s != NULL; s = setNextItem (relFilesSet))
+      dbuf_printf (&dbuf, " %s", s);
+
+  /* link stdlib */
+  dbuf_append_str (&dbuf,
+    " --start-group -lsdcc -lmcs51 -lint -llong -llonglong -lfloat --end-group");
+
+  char *buf = dbuf_detach_c_str (&dbuf);
+  char *tb = setPrefixSuffix (buf);
+  if (options.verbose)
+    printf ("sdcc: %s\n", tb);
+  ret = sdcc_system (tb);
+  if (ret)
+    exit (EXIT_FAILURE);
+
+  /* if user need ihx or bin, we need generate it */
+  /* $(OBJCOPY) -O ihex $< $@ */
+  if (options.out_fmt == 'i')
+    {
+      dbuf_init (&dbuf, 4096);
+
+      dbuf_printf (&dbuf, "i51-elf-objcopy -O ihex \"%s\" \"%s.hex\"",
+        elfpath, elfPathWithoutExt);
+
+      char *buf = dbuf_detach_c_str (&dbuf);
+      char *tb = setPrefixSuffix (buf);
+      if (options.verbose)
+        printf ("ld: %s\n", tb);
+      ret = sdcc_system (tb);
+      if (ret)
+        exit (EXIT_FAILURE);
+    }
+
+  if (!options.no_map_and_disasm)
+    {
+      dbuf_init (&dbuf, 4096);
+
+      dbuf_printf (&dbuf, "i51-elf-objdump --visualize-jumps -S -l \"%s\" > \"%s.asm\"",
+        elfpath, elfpath);
+
+      char *buf = dbuf_detach_c_str (&dbuf);
+      char *tb = setPrefixSuffix (buf);
+      if (options.verbose)
+        printf ("ld: %s\n", tb);
+      ret = sdcc_system (tb);
+    }
+}
+
 /** $1 is always the basename.
     $2 is always the output file.
     $3 varies
@@ -961,18 +1144,21 @@ get_model (void)
     $L is the list of extra options that should be passed on the command line...
     MUST be terminated with a NULL.
 */
-static const char *_linkCmd[] =
-{
-  "sdld", "-nf", "$1", "$L", NULL
-};
 
 /* $3 is replaced by assembler.debug_opts resp. port->assembler.plain_opts */
 static const char *_asmCmd[] =
 {
-  "sdas8051", "$l", "$3", "$2", "$1.asm", NULL
+  "i51-elf-as", "-mmcs51", "$3", "-al=$2.lst", "-o", "$2", "$1.asm", NULL
 };
 
-static const char * const _libs[] = { "mcs51", STD_LIB, STD_INT_LIB, STD_LONG_LIB, STD_FP_LIB, NULL, };
+static const char * const _libs[] = { 
+  "mcs51",
+  "sdcc",
+  "int",
+  "long",
+  "float",
+  NULL,
+};
 
 /* Globals */
 PORT mcs51_port =
@@ -991,18 +1177,18 @@ PORT mcs51_port =
   {                             /* Assembler */
     _asmCmd,
     NULL,
-    "-plosgffwy",               /* Options with debug */
-    "-plosgffw",                /* Options without debug */
+    "",               /* Options with debug */
+    "",                /* Options without debug */
     0,
     ".asm",
     NULL                        /* no do_assemble function */
   },
   {                             /* Linker */
-    _linkCmd,
     NULL,
     NULL,
-    ".rel",
-    1,
+    doLink,
+    ".o",
+    0,
     NULL,                       /* crt */
     _libs,                      /* libs */
   },
@@ -1024,25 +1210,25 @@ PORT mcs51_port =
   /* tags for generic pointers */
   { 0x00, 0x40, 0x60, 0x80 },   /* far, near, xstack, code */
   {
-    "XSTK    (PAG,XDATA)",      // xstack_name
-    "STACK   (DATA)",           // istack_name
-    "CSEG    (CODE)",           // code_name
-    "DSEG    (DATA)",           // data_name
-    "ISEG    (DATA)",           // idata_name
-    "PSEG    (PAG,XDATA)",      // pdata_name
-    "XSEG    (XDATA)",          // xdata_name
-    "BSEG    (BIT)",            // bit_name
-    "RSEG    (ABS,DATA)",       // reg_name
-    "GSINIT  (CODE)",           // static_name
-    "OSEG    (OVR,DATA)",       // overlay_name
-    "GSFINAL (CODE)",           // post_static_name
-    "HOME    (CODE)",           // home_name
-    "XISEG   (XDATA)",          // xidata_name - initialized xdata
-    "XINIT   (CODE)",           // xinit_name - a code copy of xiseg
-    "CONST   (CODE)",           // const_name - const data (code or not)
-    "CABS    (ABS,CODE)",       // cabs_name - const absolute data (code or not)
-    "XABS    (ABS,XDATA)",      // xabs_name - absolute xdata/pdata
-    "IABS    (ABS,DATA)",       // iabs_name - absolute idata/data
+    ";XSTK (PAG,XDATA)", // xstack_name
+    ".stack, \"aw\"", //"STACK   (DATA)" istack_name
+    ".text",           // CSEG    (CODE) code_name
+    ".data",           // DSEG    (DATA) data_name
+    ".idata, \"aw\"",           // ISEG    (DATA) idata_name
+    ".pdata, \"aw\"",      // PSEG    (PAG,XDATA) pdata_name
+    ".xbss, \"aw\"",          // XSEG    (XDATA) xdata_name
+    ".bitdata, \"aw\"",            // BSEG    (BIT) bit_name
+    ".sfr",       // RSEG    (ABS,DATA) reg_name
+    ".text.gsinit, \"ax\"",           // GSINIT  (CODE) static_name
+    ".overlay.data, \"aw\"",       // OSEG (OVR,DATA) overlay_name
+    ".text.gsfinal, \"ax\"",           // GSFINAL (CODE) post_static_name
+    ".text.home",           // HOME    (CODE) home_name
+    ".xdata, \"aw\"",          // XISEG   (XDATA) xidata_name - initialized xdata
+    ".text.xinit, \"ax\"",           // XINIT   (CODE) xinit_name - a code copy of xiseg
+    ".text.const, \"ax\"",           // CONST   (CODE) const_name - const data (code or not)
+    ".abs.code, \"ax\"",       // CABS    (ABS,CODE) cabs_name - const absolute data (code or not)
+    ".abs.xdata, \"aw\"",      // XABS    (ABS,XDATA) xabs_name - absolute xdata/pdata
+    ".abs.idata, \"aw\"",       // IABS    (ABS,DATA) iabs_name - absolute idata/data
     NULL,                       // name of segment for initialized variables
     NULL,                       // name of segment for copies of initialized variables in code space
     NULL,
@@ -1108,7 +1294,7 @@ PORT mcs51_port =
   cseCostEstimation,
   NULL,                         /* no builtin functions */
   GPOINTER,                     /* treat unqualified pointers as "generic" pointers */
-  1,                            /* reset labelKey to 1 */
+  0,                            /* reset labelKey to 1 */
   1,                            /* globals & local statics allowed */
   0,                            /* Number of registers handled in the tree-decomposition-based register allocator in SDCCralloc.hpp */
   PORT_MAGIC

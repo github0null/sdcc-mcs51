@@ -29,6 +29,18 @@ strlen-1.c from the execute part of the gcc torture tests.
 
 #define MAX_LENGTH (MAX_OFFSET + MAX_TEST + MAX_EXTRA + 1)
 
+#if defined(__SDCC_mcs51) && defined(__SDCC_GNU_AS)
+
+static __xdata union {
+  char buf[MAX_LENGTH];
+  long long align_int;
+#if 0 // TODO: enable when SDCC supports long double!
+  long double align_fp;
+#endif
+} u;
+
+#else
+
 static union {
   char buf[MAX_LENGTH];
   long long align_int;
@@ -36,6 +48,9 @@ static union {
   long double align_fp;
 #endif
 } u;
+
+#endif
+
 #endif
 
 void

@@ -1537,7 +1537,14 @@ replace {
 // provided by Bernhard Held <bernhard.held@de.westinghouse.com>
 replace {
 	mov	dpl,#%1
-	mov	dph,#(%1 >> 8)
+	mov	dph,#hi_(%1)
+} by {
+	;	Peephole 182.a	used 16 bit load of DPTR
+	mov	dptr,#%1
+}
+replace {
+	mov	dpl,#lo_(%1)
+	mov	dph,#hi_(%1)
 } by {
 	;	Peephole 182.a	used 16 bit load of DPTR
 	mov	dptr,#%1
@@ -1553,13 +1560,13 @@ replace {
 }
 
 // saving 3 byte, 2 cycles. Probably obsoleted by 182.b
-replace {
-	mov	dpl,#%1
-	mov	dph,#%2
-} by {
-	;	Peephole 182.c	used 16 bit load of dptr
-	mov	dptr,#(((%2)<<8) + %1)
-}
+//replace {
+//	mov	dpl,#%1
+//	mov	dph,#%2
+//} by {
+//	;	Peephole 182.c	used 16 bit load of dptr
+//	mov	dptr,#(((%2)<<8) + %1)
+//}
 
 // applies to return 0.0; in f.e. sincosf.c
 replace {
@@ -1613,7 +1620,7 @@ replace restart {
 	add	a,#%1
 	mov	dpl,a
 	clr	a
-	addc	a,#(%1 >> 8)
+	addc	a,#hi_(%1)
 	mov	dph,a
 	clr	a
 	movc	a,@a+dptr
@@ -1653,7 +1660,7 @@ replace restart {
 	add	a,#%1
 	mov	dpl,a
 	clr	a
-	addc	a,#(%1 >> 8)
+	addc	a,#hi_(%1)
 	mov	dph,a
 	clr	a
 	movc	a,@a+dptr
@@ -1685,7 +1692,7 @@ replace restart {
 	add	a,#%1
 	mov	dpl,a
 	clr	a
-	addc	a,#(%1 >> 8)
+	addc	a,#hi_(%1)
 	mov	dph,a
 	clr	a
 	movc	a,@a+dptr
@@ -1708,7 +1715,7 @@ replace {
 	add	a,#%1
 	mov	dpl,a
 	clr	a
-	addc	a,#(%1 >> 8)
+	addc	a,#hi_(%1)
 	mov	dph,a
 	clr	a
 	movc	a,@a+dptr
@@ -1724,7 +1731,7 @@ replace {
 	mul	ab
 	add	a,#%2
 	mov	dpl,a
-	mov	a,#(%2 >> 8)
+	mov	a,#hi_(%2)
 	addc	a,b
 	mov	dph,a
 	clr	a
@@ -1737,7 +1744,7 @@ replace {
 	add	a,acc
 	mov	dpl,a
 	clr	a
-	addc	a,#(%2 >> 8)
+	addc	a,#hi_(%2)
 	mov	dph,a
 	mov	a,#%2
 	movc	a,@a+dptr
@@ -1753,7 +1760,7 @@ replace {
 	add	a, #%2
 	mov	dpl,a
 	mov	a,%1
-	addc	a, #(%2 >> 8)
+	addc	a, #hi_(%2)
 	mov	dph,a
 	clr	a
 	movc	a,@a+dptr
@@ -2209,7 +2216,7 @@ replace {
 	mov	%1,#(( %2 >> 8 ) ^ 0x80)
 } by {
 	;	Peephole 213.a	inserted fix
-	mov	%1,#(%2 >> 8)
+	mov	%1,#hi_(%2)
 	xrl	%1,#0x80
 }
 
@@ -2217,7 +2224,7 @@ replace {
 	mov	%1,#(( %2 + %3 >> 8 ) ^ 0x80)
 } by {
 	;	Peephole 213.b	inserted fix
-	mov	%1,#((%2 + %3) >> 8)
+	mov	%1,#hi_(%2 + %3)
 	xrl	%1,#0x80
 }
 
@@ -5121,3 +5128,19 @@ replace{
 } by {
 	;	Peephole 500	removed redundant label %1
 } if labelRefCount(%1 0)
+
+// added by github0null@outlook.com
+replace restart {
+	mov	r%1,a
+	mov	a,r%1
+} by {
+	mov	r%1,a
+	;	Peephole 501.a	removed redundant mov	a,r%1
+}
+replace restart {
+	mov	a,r%1
+	mov	r%1,a
+} by {
+	mov	a,r%1
+	;	Peephole 501.b	removed redundant mov	r%1,a
+}

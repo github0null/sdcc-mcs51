@@ -3,7 +3,7 @@
 
 #include <testfwk.h>
 
-#ifdef __SDCC_mcs51
+#if defined (__SDCC_mcs51) && !defined (__SDCC_GNU_AS)
 __sfr32 __at (0xFCFBFAF9) SFR32;
 #else
 volatile unsigned long SFR32;

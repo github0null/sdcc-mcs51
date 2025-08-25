@@ -386,7 +386,7 @@ allocIntoSeg (symbol *sym)
     }
   if (!(segment = SPEC_OCLS (sym->etype)))
     {
-      fprintf (stderr, "Symbol %s:\n", sym->name);
+      fprintf (stderr, "Symbol %s (%s:%d):\n", sym->name, sym->fileDef, sym->lineDef);
       wassertl (0, "Failed to allocate symbol to memory segment due to missing output storage class");
       return;
     }

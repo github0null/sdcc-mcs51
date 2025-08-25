@@ -452,7 +452,7 @@ scan4op (lineNode **pl, const char *pReg, const char *untilOp,
                   p++;
                 while (isdigit (*p))
                   p++;
-                if (isdigit(p[-1]) && *p == '$') /* at least one digit */
+                if (p[0] == '.' && p[1] == 'L') /* gas style temp label */
                   {
                     /* this is a temp label for a pcall */
                     *pl = findLabel (*pl);
@@ -885,7 +885,7 @@ mcs51notUsed (const char *what, lineNode *endPl, lineNode *head)
   // If we don't know what it is, assume it might be used.
   // todo: allow a, and support it in removeDeadMove.
   // todo: allow dpl, dph, and support it in removeDeadMove.
-  if (!(what[0] == 'r' && isdigit(what[1])) && !(what[0] == 'a' && what[0] == 'r' && isdigit(what[2]))) // Allow r?
+  if (!(what[0] == 'r' && isdigit(what[1]))) // Allow r?
     return (false);
 
   _G.head = head;

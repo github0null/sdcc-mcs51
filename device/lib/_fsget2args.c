@@ -53,9 +53,9 @@ fsgetargs:
 	rlc	a
 	mov	sign_a, c
 	mov	exp_a, a
-	jz	00001$
+	jz	.L00001
 	setb	b.7
-00001$:
+.L00001:
 	mov	r4, b
 	// now extract the 2nd parameter from the stack
 	mov	a, sp
@@ -74,9 +74,9 @@ fsgetargs:
 	rlc	a
 	mov	sign_b, c
 	mov	exp_b, a
-	jz	00002$
+	jz	.L00002
 	setb	b.7
-00002$:
+.L00002:
 	mov	r7, b
 	ret
 	__endasm;

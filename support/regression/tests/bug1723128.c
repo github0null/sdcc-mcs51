@@ -30,7 +30,7 @@ typedef struct {
   unsigned char CRC;                         // 10
 } AUTOCAL_CFG;
 
-#if !defined(__SDCC_hc08) && !defined(__SDCC_s08) && !defined(__SDCC_pic14) && !defined(__SDCC_sm83)
+#if !defined(__SDCC_hc08) && !defined(__SDCC_s08) && !defined(__SDCC_pic14) && !defined(__SDCC_sm83) && !defined(__SDCC_GNU_AS)
 __code AUTOCAL_CFG __at (0x8000) AutoCal_CFG = {0};
 #else
 /* The "__at (0x8000)" is suppressed on the hc08 to avoid */

@@ -26,27 +26,125 @@
 ;  might be covered by the GNU General Public License.
 ;--------------------------------------------------------------------------
 
-	.area CSEG    (CODE)
-	.area GSINIT0 (CODE)
-	.area GSINIT1 (CODE)
-	.area GSINIT2 (CODE)
-	.area GSINIT3 (CODE)
-	.area GSINIT4 (CODE)
-	.area GSINIT5 (CODE)
-	.area GSINIT  (CODE)
-	.area GSFINAL (CODE)
+	.global __start__stack, __idata_seg_end, _main
+	.global __xinit_start, __xdata_start
+	.global __xdata_has_copy, __xdata_ov_flag, __xdata_clear_end, __xdata_copy_end
+	.global bits, b0, b1, b2, b3, b4, b5, b6, b7
 
-	.globl __start__stack
-	
-	.area GSINIT0 (CODE)
+	.section .bss, "aw"
+	.equ bits, 0x20
+	.equ b0, (bits - 0x20) * 8 + 0
+	.equ b1, (bits - 0x20) * 8 + 1
+	.equ b2, (bits - 0x20) * 8 + 2
+	.equ b3, (bits - 0x20) * 8 + 3
+	.equ b4, (bits - 0x20) * 8 + 4
+	.equ b5, (bits - 0x20) * 8 + 5
+	.equ b6, (bits - 0x20) * 8 + 6
+	.equ b7, (bits - 0x20) * 8 + 7
 
-__sdcc_gsinit_startup::
-        mov     sp,#__start__stack - 1
+	.global __sdcc_startup
+	.section .init.0, "ax"
+__sdcc_startup:
+	.using 0
+	;-----------------------------
+	; Clear IDATA
+	;-----------------------------
+	mov r0, #__idata_seg_end
+.L00001:
+	mov @r0, #0
+	djnz r0, .L00001
+	; init SP
+	mov sp, #__start__stack - 1
 
-	.area GSINIT2 (CODE)
-	
-        lcall   ___sdcc_external_startup
-        mov     a,dpl
-        jz      __sdcc_init_data
-        ljmp    __sdcc_program_startup
-__sdcc_init_data:
+	;-----------------------------
+	; Clear PDATA/XDATA
+	;-----------------------------
+	mov r0, #lo_(__xdata_clear_end)
+	mov r1, #hi_(__xdata_clear_end)
+	mov a, r0
+	orl a, r1
+	jz .L00010
+	; Clear pdata by movx @ri,a
+	push ar0
+	mov r0, #0xFF
+	clr a
+.L00020:
+	movx @r0, a
+	djnz r0, .L00020
+	movx @r0, a
+	pop ar0
+	; Clear xdata by movx @dptr,a
+	mov dptr, #0
+.L00002:
+	clr a
+	movx @dptr, a
+	inc dptr
+	mov a, r1
+	cjne a, dph, .L00002
+	mov a, r0
+	cjne a, dpl, .L00002
+	mov a, #__xdata_ov_flag
+	jz .L00004
+	clr a
+	mov dptr, #0xFFFF
+	movx @dptr, a
+.L00004:
+
+	;-----------------------------
+	; Copy initialized xdata
+	;-----------------------------
+	mov a, #__xdata_has_copy
+	jz .L00010
+	mov r0, #lo_(__xinit_start)
+	mov r1, #hi_(__xinit_start)
+	mov r2, #lo_(__xdata_start)
+	mov r3, #hi_(__xdata_start)
+.L00011:
+	; copy one byte
+	clr a
+	mov dpl, r0
+	mov dph, r1
+	movc a, @a+dptr
+	mov dpl, r2
+	mov dph, r3
+	movx @dptr, a
+	; increment r0 r1
+	inc r0
+	cjne r0, #0, .L00012
+	inc r1
+.L00012:
+	; increment r2 r3
+	inc r2
+	cjne r2, #0, .L00013
+	inc r3
+.L00013:
+	cjne r3, #hi_(__xdata_copy_end), .L00011
+	cjne r2, #lo_(__xdata_copy_end), .L00011
+	; copy the end byte if overflowed
+	mov a, #__xdata_ov_flag
+	cjne a, #2, .L00010
+	mov dpl, r0
+	mov dph, r1
+	movc a, @a+dptr
+	mov dptr, #0xFFFF
+	movx @dptr, a
+.L00010:
+
+	;-----------------------------
+	; Global & static init code 
+	;-----------------------------
+	.section .init.1, "ax"
+
+	;-----------------------------
+	; Jump to main()
+	;-----------------------------
+	.section .init.3, "ax"
+	mov r0, #___sdcc_external_startup
+	mov r1, #hi_(___sdcc_external_startup)
+	mov a, r0
+	orl a, r1
+	jz .L00005
+	lcall ___sdcc_external_startup
+.L00005:
+	ljmp _main
+	ljmp __sdcc_startup

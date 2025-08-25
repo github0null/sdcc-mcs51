@@ -40,11 +40,11 @@ static void dummy(void) __naked
 	.globl	_abs
 _abs:
 	mov	a, dph
-	jnb	acc.7, 00001$
+	jnb	acc.7, .L00001
 	xrl	dpl,#0xFF
 	xrl	dph,#0xFF
 	inc	dptr
-00001$:
+.L00001:
 	_RETURN
 	__endasm;
 }

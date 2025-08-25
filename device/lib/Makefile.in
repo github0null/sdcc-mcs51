@@ -32,7 +32,7 @@ endif
 CC              = $(top_builddir)/bin/sdcc
 # The predefined macros reflect what SDCC predefines (so we don't get any errors when generating Makefile.dep).
 CPP             = $(top_builddir)/bin/sdcpp -D__STDC_ISO_10646__=201409L
-SDAR            = $(abs_top_builddir)/bin/sdar
+SDAR            = $(abs_top_builddir)/bin/i51-elf-ar
 
 prefix          = @prefix@
 exec_prefix     = @exec_prefix@
@@ -51,7 +51,7 @@ lib_dir_suffix  = @lib_dir_suffix@
 sdcc_libdir     = $(DESTDIR)$(datadir)/$(lib_dir_suffix)
 
 CPPFLAGS        = -I$(INCDIR) -I$(PORTINCDIR)
-CFLAGS          = $(MODELFLAGS) --nostdinc --std-c23
+CFLAGS          = $(MODELFLAGS) --nostdinc --std-c23 --verbose
 
 BUILDDIR        = build
 # Default
@@ -155,11 +155,11 @@ SOURCES_SDCC = $(COMMON_SDCC) \
 
 SOURCES = $(SOURCES_FLOAT) $(SOURCES_INT) $(SOURCES_LONG) $(SOURCES_LONGLONG) $(SOURCES_SDCC)
 
-OBJECTS_FLOAT = $(SOURCES_FLOAT:%.c=$(PORT)/%.rel)
-OBJECTS_INT = $(SOURCES_INT:%.c=$(PORT)/%.rel)
-OBJECTS_LONG = $(SOURCES_LONG:%.c=$(PORT)/%.rel)
-OBJECTS_LONGLONG = $(SOURCES_LONGLONG:%.c=$(PORT)/%.rel)
-OBJECTS_SDCC = $(SOURCES_SDCC:%.c=$(PORT)/%.rel)
+OBJECTS_FLOAT = $(SOURCES_FLOAT:%.c=$(PORT)/%.o)
+OBJECTS_INT = $(SOURCES_INT:%.c=$(PORT)/%.o)
+OBJECTS_LONG = $(SOURCES_LONG:%.c=$(PORT)/%.o)
+OBJECTS_LONGLONG = $(SOURCES_LONGLONG:%.c=$(PORT)/%.o)
+OBJECTS_SDCC = $(SOURCES_SDCC:%.c=$(PORT)/%.o)
 
 OBJECTS = $(OBJECTS_FLOAT) $(OBJECTS_INT) $(OBJECTS_LONG) $(OBJECTS_LONGLONG) $(OBJECTS_SDCC)
 
@@ -183,14 +183,14 @@ XA51_SDCC = $(COMMON_SDCC) \
   _heap.c \
   div.c \
   ldiv.c \
-  lldiv.rel
+  lldiv.o
 
 XA51SOURCES = $(XA51_FLOAT) $(XA51_INT) $(XA51_LONG) $(XA51_SDCC)
-XA51OBJECTS = $(XA51SOURCES:%.c=$(PORT)/%.rel)
+XA51OBJECTS = $(XA51SOURCES:%.c=$(PORT)/%.o)
 
-LIB_FILES = $(PORTDIR)/libfloat.lib $(PORTDIR)/libint.lib $(PORTDIR)/liblong.lib $(PORTDIR)/liblonglong.lib $(PORTDIR)/libsdcc.lib
+LIB_FILES = $(PORTDIR)/libfloat.a $(PORTDIR)/libint.a $(PORTDIR)/liblong.a $(PORTDIR)/liblonglong.a $(PORTDIR)/libsdcc.a
 
-OEXT            = .rel
+OEXT            = .o
 
 include $(srcdir)/incl.mk
 
@@ -221,7 +221,7 @@ TARGETS        += model-mos65c02
 endif
 
 ifeq ($(OPT_DISABLE_MCS51), 0)
-TARGETS        += models small-mcs51-stack-auto large-mcs51-stack-auto
+TARGETS        += small-mcs51-stack-auto large-mcs51-stack-auto
 endif
 
 ifeq ($(OPT_DISABLE_PIC14), 0)
@@ -319,13 +319,13 @@ models:
 small-mcs51-stack-auto:
 	if grep '^mcs51$$' $(top_builddir)/ports.build > /dev/null; then \
 	  mkdir -p small-stack-auto; cp small/Makefile small-stack-auto; \
-	  $(MAKE) MODELFLAGS="--model-small --stack-auto" PORT=small-stack-auto PORTDIR=$(BUILDDIR)/small-stack-auto PORTINCDIR=$(INCDIR)/mcs51 objects || exit 1; \
+	  $(MAKE) MODELFLAGS="--model-small --stack-auto --nooverlay" PORT=small-stack-auto PORTDIR=$(BUILDDIR)/small-stack-auto PORTINCDIR=$(INCDIR)/mcs51 objects || exit 1; \
 	fi
 
 large-mcs51-stack-auto:
 	if grep '^mcs51$$' $(top_builddir)/ports.build > /dev/null; then \
 	  mkdir -p large-stack-auto; cp small/Makefile large-stack-auto; \
-	  $(MAKE) MODELFLAGS="--model-large --stack-auto" PORT=large-stack-auto PORTDIR=$(BUILDDIR)/large-stack-auto PORTINCDIR=$(INCDIR)/mcs51 objects || exit 1; \
+	  $(MAKE) MODELFLAGS="--model-large --stack-auto --nooverlay" PORT=large-stack-auto PORTDIR=$(BUILDDIR)/large-stack-auto PORTINCDIR=$(INCDIR)/mcs51 objects || exit 1; \
 	fi
 
 model-mcs51-stack-auto:
@@ -364,19 +364,19 @@ objects-xa51:
 	$(MAKE) $(XA51OBJECTS)
 	$(MAKE) port-specific-objects
 
-$(PORTDIR)/lib$(PORT).lib: $(XA51OBJECTS)
-	rm -f $(PORTDIR)/lib$(PORT).lib
+$(PORTDIR)/lib$(PORT).a: $(XA51OBJECTS)
+	rm -f $(PORTDIR)/lib$(PORT).a
 ifeq ($(LIB_TYPE), SDCCLIB)
-	$(top_builddir)/bin/sdcclib -a $(PORTDIR)/lib$(PORT).lib $(XA51OBJECTS)
+	$(top_builddir)/bin/sdcclib -a $(PORTDIR)/lib$(PORT).a $(XA51OBJECTS)
 else
   ifeq ($(LIB_TYPE), AR)
-	${SDAR} -rcSD $(PORTDIR)/lib$(PORT).lib $(XA51OBJECTS)
+	${SDAR} -rcv $(PORTDIR)/lib$(PORT).a $(XA51OBJECTS)
   else
     ifeq ($(LIB_TYPE), RANLIB)
-	${SDAR} -rcD $(PORTDIR)/lib$(PORT).lib $(XA51OBJECTS)
+	${SDAR} -rcv $(PORTDIR)/lib$(PORT).a $(XA51OBJECTS)
     else
-	rm -f $(PORTDIR)/lib$(PORT).lib
-	for i in $(notdir $(basename $(XA51OBJECTS))); do echo $$i >> $(PORTDIR)/lib$(PORT).lib; done
+	rm -f $(PORTDIR)/lib$(PORT).a
+	for i in $(notdir $(basename $(XA51OBJECTS))); do echo $$i >> $(PORTDIR)/lib$(PORT).a; done
 	cp $(XA51OBJECTS) $(PORTDIR)
     endif
   endif
@@ -590,82 +590,82 @@ port-specific-objects-pic14:
 
 ifeq ($(LIB_TYPE), SDCCLIB)
 
-$(PORTDIR)/libfloat.lib: $(OBJECTS_FLOAT)
-	$(top_builddir)/bin/sdcclib -a $(PORTDIR)/libfloat.lib $(OBJECTS_FLOAT)
+$(PORTDIR)/libfloat.a: $(OBJECTS_FLOAT)
+	$(top_builddir)/bin/sdcclib -a $(PORTDIR)/libfloat.a $(OBJECTS_FLOAT)
 
-$(PORTDIR)/libint.lib: $(OBJECTS_INT)
-	$(top_builddir)/bin/sdcclib -a $(PORTDIR)/libint.lib $(OBJECTS_INT)
+$(PORTDIR)/libint.a: $(OBJECTS_INT)
+	$(top_builddir)/bin/sdcclib -a $(PORTDIR)/libint.a $(OBJECTS_INT)
 
-$(PORTDIR)/liblong.lib: $(OBJECTS_LONG)
-	$(top_builddir)/bin/sdcclib -a $(PORTDIR)/liblong.lib $(OBJECTS_LONG)
+$(PORTDIR)/liblong.a: $(OBJECTS_LONG)
+	$(top_builddir)/bin/sdcclib -a $(PORTDIR)/liblong.a $(OBJECTS_LONG)
 
-$(PORTDIR)/liblonglong.lib: $(OBJECTS_LONGLONG)
-	$(top_builddir)/bin/sdcclib -a $(PORTDIR)/liblonglong.lib $(OBJECTS_LONGLONG)
+$(PORTDIR)/liblonglong.a: $(OBJECTS_LONGLONG)
+	$(top_builddir)/bin/sdcclib -a $(PORTDIR)/liblonglong.a $(OBJECTS_LONGLONG)
 
-$(PORTDIR)/libsdcc.lib: $(OBJECTS_SDCC)
-	$(top_builddir)/bin/sdcclib -a $(PORTDIR)/libsdcc.lib $(OBJECTS_SDCC)
+$(PORTDIR)/libsdcc.a: $(OBJECTS_SDCC)
+	$(top_builddir)/bin/sdcclib -a $(PORTDIR)/libsdcc.a $(OBJECTS_SDCC)
 
 else
   ifeq ($(LIB_TYPE), AR)
 
-$(PORTDIR)/libfloat.lib: $(OBJECTS_FLOAT)
-	${SDAR} -rcSD $(PORTDIR)/libfloat.lib $(OBJECTS_FLOAT)
+$(PORTDIR)/libfloat.a: $(OBJECTS_FLOAT)
+	${SDAR} -rcv $(PORTDIR)/libfloat.a $(OBJECTS_FLOAT)
 
-$(PORTDIR)/libint.lib: $(OBJECTS_INT)
-	${SDAR} -rcSD $(PORTDIR)/libint.lib $(OBJECTS_INT)
+$(PORTDIR)/libint.a: $(OBJECTS_INT)
+	${SDAR} -rcv $(PORTDIR)/libint.a $(OBJECTS_INT)
 
-$(PORTDIR)/liblong.lib: $(OBJECTS_LONG)
-	${SDAR} -rcSD $(PORTDIR)/liblong.lib $(OBJECTS_LONG)
+$(PORTDIR)/liblong.a: $(OBJECTS_LONG)
+	${SDAR} -rcv $(PORTDIR)/liblong.a $(OBJECTS_LONG)
 
-$(PORTDIR)/liblonglong.lib: $(OBJECTS_LONGLONG)
-	${SDAR} -rcSD $(PORTDIR)/liblonglong.lib $(OBJECTS_LONGLONG)
+$(PORTDIR)/liblonglong.a: $(OBJECTS_LONGLONG)
+	${SDAR} -rcv $(PORTDIR)/liblonglong.a $(OBJECTS_LONGLONG)
 
-$(PORTDIR)/libsdcc.lib: $(OBJECTS_SDCC)
-	${SDAR} -rcSD $(PORTDIR)/libsdcc.lib $(OBJECTS_SDCC)
+$(PORTDIR)/libsdcc.a: $(OBJECTS_SDCC)
+	${SDAR} -rcv $(PORTDIR)/libsdcc.a $(OBJECTS_SDCC)
 
   else
     ifeq ($(LIB_TYPE), RANLIB)
 
-$(PORTDIR)/libfloat.lib: $(OBJECTS_FLOAT)
-	${SDAR} -rcD $(PORTDIR)/libfloat.lib $(OBJECTS_FLOAT)
+$(PORTDIR)/libfloat.a: $(OBJECTS_FLOAT)
+	${SDAR} -rcv $(PORTDIR)/libfloat.a $(OBJECTS_FLOAT)
 
-$(PORTDIR)/libint.lib: $(OBJECTS_INT)
-	${SDAR} -rcD $(PORTDIR)/libint.lib $(OBJECTS_INT)
+$(PORTDIR)/libint.a: $(OBJECTS_INT)
+	${SDAR} -rcv $(PORTDIR)/libint.a $(OBJECTS_INT)
 
-$(PORTDIR)/liblong.lib: $(OBJECTS_LONG)
-	${SDAR} -rcD $(PORTDIR)/liblong.lib $(OBJECTS_LONG)
+$(PORTDIR)/liblong.a: $(OBJECTS_LONG)
+	${SDAR} -rcv $(PORTDIR)/liblong.a $(OBJECTS_LONG)
 
-$(PORTDIR)/liblonglong.lib: $(OBJECTS_LONGLONG)
-	${SDAR} -rcD $(PORTDIR)/liblonglong.lib $(OBJECTS_LONGLONG)
+$(PORTDIR)/liblonglong.a: $(OBJECTS_LONGLONG)
+	${SDAR} -rcv $(PORTDIR)/liblonglong.a $(OBJECTS_LONGLONG)
 
-$(PORTDIR)/libsdcc.lib: $(OBJECTS_SDCC)
-	${SDAR} -rcD $(PORTDIR)/libsdcc.lib $(OBJECTS_SDCC)
+$(PORTDIR)/libsdcc.a: $(OBJECTS_SDCC)
+	${SDAR} -rcv $(PORTDIR)/libsdcc.a $(OBJECTS_SDCC)
 
     else
 
-$(PORTDIR)/libfloat.lib: $(OBJECTS_FLOAT)
-	rm -f $(PORTDIR)/libfloat.lib
-	for i in $(notdir $(basename $(OBJECTS_FLOAT))); do echo $$i >> $(PORTDIR)/libfloat.lib; done
+$(PORTDIR)/libfloat.a: $(OBJECTS_FLOAT)
+	rm -f $(PORTDIR)/libfloat.a
+	for i in $(notdir $(basename $(OBJECTS_FLOAT))); do echo $$i >> $(PORTDIR)/libfloat.a; done
 	cp $(OBJECTS_FLOAT) $(PORTDIR)
 
-$(PORTDIR)/libint.lib: $(OBJECTS_INT)
-	rm -f $(PORTDIR)/libint.lib
-	for i in $(notdir $(basename $(OBJECTS_INT))); do echo $$i >> $(PORTDIR)/libint.lib; done
+$(PORTDIR)/libint.a: $(OBJECTS_INT)
+	rm -f $(PORTDIR)/libint.a
+	for i in $(notdir $(basename $(OBJECTS_INT))); do echo $$i >> $(PORTDIR)/libint.a; done
 	cp $(OBJECTS_INT) $(PORTDIR)
 
-$(PORTDIR)/liblong.lib: $(OBJECTS_LONG)
-	rm -f $(PORTDIR)/liblong.lib
-	for i in $(notdir $(basename $(OBJECTS_LONG))); do echo $$i >> $(PORTDIR)/liblong.lib; done
+$(PORTDIR)/liblong.a: $(OBJECTS_LONG)
+	rm -f $(PORTDIR)/liblong.a
+	for i in $(notdir $(basename $(OBJECTS_LONG))); do echo $$i >> $(PORTDIR)/liblong.a; done
 	cp $(OBJECTS_LONG) $(PORTDIR)
 
-$(PORTDIR)/liblonglong.lib: $(OBJECTS_LONGLONG)
-	rm -f $(PORTDIR)/liblonglong.lib
-	for i in $(notdir $(basename $(OBJECTS_LONGLONG))); do echo $$i >> $(PORTDIR)/liblonglong.lib; done
+$(PORTDIR)/liblonglong.a: $(OBJECTS_LONGLONG)
+	rm -f $(PORTDIR)/liblonglong.a
+	for i in $(notdir $(basename $(OBJECTS_LONGLONG))); do echo $$i >> $(PORTDIR)/liblonglong.a; done
 	cp $(OBJECTS_LONGLONG) $(PORTDIR)
 
-$(PORTDIR)/libsdcc.lib: $(OBJECTS_SDCC)
-	rm -f $(PORTDIR)/libsdcc.lib
-	for i in $(notdir $(basename $(OBJECTS_SDCC))); do echo $$i >> $(PORTDIR)/libsdcc.lib; done
+$(PORTDIR)/libsdcc.a: $(OBJECTS_SDCC)
+	rm -f $(PORTDIR)/libsdcc.a
+	for i in $(notdir $(basename $(OBJECTS_SDCC))); do echo $$i >> $(PORTDIR)/libsdcc.a; done
 	cp $(OBJECTS_SDCC) $(PORTDIR)
 
     endif
@@ -697,7 +697,7 @@ install: all installdirs
 
 	for src in $(MODELS) ds390 ds400 z80 z180 ez80_z80 z80n r2k r2ka r3ka tlcs90 sm83 r800 hc08 s08 mos6502 mos65c02 stm8 pdk13 pdk14 pdk15 f8 pic14 pic16; do \
 	  find $(sdcc_libdir)/src/$$src -depth \
-	    \( -name '*.rel' -o -name '*.dump*' -o -name '*.sym' -o -name '*.o' -o -name '*.lib' -o \
+	    \( -name '*.o' -o -name '*.dump*' -o -name '*.sym' -o -name '*.o' -o -name '*.a' -o \
 	    -name '*.lst' -o -name '*.asm' -o -name '.svn' -o -name 'autom4te.cache' -o \
 	    -name 'build' -o -name 'bin' -o -name 'Makefile*' -o -name 'config*' -o \
 	    -name 'depcomp' -o -name 'missing' -o -name 'install-sh' -o \
@@ -705,7 +705,7 @@ install: all installdirs
 	    -exec rm -rf {} + ; \
 	done
 	find $(sdcc_libdir)/src/mcs51 -depth \
-	  \( -name '*.rel' -o -name '*.dump*' -o -name '*.sym' -o -name '*.o' -o -name '*.lib' -o \
+	  \( -name '*.o' -o -name '*.dump*' -o -name '*.sym' -o -name '*.o' -o -name '*.a' -o \
 	  -name '*.lst' -o -name '.svn' -o -name 'build' -o -name 'bin' -o \
 	  -name 'Makefile*' \) \
 	  -exec rm -rf {} +
@@ -757,7 +757,7 @@ include $(srcdir)/clean.mk
 # My rules
 # --------
 
-.SUFFIXES: .rel .o
+.SUFFIXES: .o .o
 
 $(PORT)/%$(OEXT): %.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@

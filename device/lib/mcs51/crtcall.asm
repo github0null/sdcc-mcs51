@@ -26,19 +26,8 @@
 ;  might be covered by the GNU General Public License.
 ;--------------------------------------------------------------------------
 
-	.area HOME    (CODE)
-	.area GSINIT0 (CODE)
-	.area GSINIT1 (CODE)
-	.area GSINIT2 (CODE)
-	.area GSINIT3 (CODE)
-	.area GSINIT4 (CODE)
-	.area GSINIT5 (CODE)
-	.area GSINIT  (CODE)
-	.area GSFINAL (CODE)
-	.area CSEG    (CODE)
-
-	.area HOME    (CODE)
-
-__sdcc_call_dptr::
+	.global __sdcc_call_dptr
+	.section .text.__sdcc_call_dptr, "ax"
+__sdcc_call_dptr:
 	clr	a
 	jmp	@a+dptr

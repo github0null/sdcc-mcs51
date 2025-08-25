@@ -54,7 +54,7 @@ for line in lines:
           name = stripped_name
 
     # in case the test program crashes before the "--- Running" message
-    m = re.match(r'^[0-9]+ words read from (.*).ihx', line)
+    m = re.match(r'^[0-9]+ words read from (.*).(?:ihx|hex)', line)
     if (m):
         name = m.group(1)
 

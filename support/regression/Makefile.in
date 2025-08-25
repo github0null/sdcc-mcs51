@@ -205,13 +205,8 @@ ${PORTS:%=test-%} : test-%: test-common
 
 # Shorthand for testing the mcs51 port only
 TEST_MCS51 = \
-	test-mcs51-small \
-	test-mcs51-medium \
-	test-mcs51-large \
-	test-mcs51-huge \
 	test-mcs51-small-stack-auto \
-	test-mcs51-large-stack-auto \
-	test-mcs51-xstack-auto
+	test-mcs51-large-stack-auto
 test-mcs51: $(filter-out ${EXCLUDE_PORTS:%=test-%}, $(TEST_MCS51))
 
 # Shorthand for testing the z80 related ports only
@@ -260,7 +255,7 @@ endif
 # Base flags.
 SDCCFLAGS += --fverbose-asm -DNO_VARARGS
 # Extension of object intermediate files
-OBJEXT = .rel
+OBJEXT = .o
 # Extension of files that can be run in the emulator
 BINEXT = .bin
 # Currently unused.  Extension to append to intermediate directories.
@@ -421,10 +416,11 @@ distclean: clean
 
 # Rule to link into .ihx
 %$(BINEXT): %$(OBJEXT) $(EXTRAS) $(FWKLIB) $(PORT_CASES_DIR)/fwk.lib
-	${M_V_CCLD}$(SDCC) $(SDCCFLAGS) $(LINKFLAGS) $(EXTRAS) $(PORT_CASES_DIR)/fwk.lib $< -o $@
+	${M_V_CCLD}$(SDCC) $(SDCCFLAGS) $(LINKFLAGS) $(EXTRAS) \
+		$(shell cat $(PORT_CASES_DIR)/fwk.lib | xargs -I{} echo $(PORT_CASES_DIR)/{} | xargs) $< -o $@
 
 # ignore (preprocessor) warnings
-gen/%/tst_p99-conformance.rel: EXTRA_COMPILE_HACK=2>/dev/null
+gen/%/tst_p99-conformance.o: EXTRA_COMPILE_HACK=2>/dev/null
 
 $(PORT_CASES_DIR)/%$(OBJEXT): %.c
 	@mkdir -p $(dir $@) # BUG?

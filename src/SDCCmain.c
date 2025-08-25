@@ -75,6 +75,7 @@ set *includeDirsSet = NULL;     /* list of include search directories */
 set *userIncDirsSet = NULL;     /* list of user include directories */
 set *libDirsSet = NULL;         /* list of lib search directories */
 bool regalloc_dry_run = FALSE;
+const char *sdccBinPath;
 
 /* language override constants and variable for handling -x during command line parsing */
 enum
@@ -658,7 +659,7 @@ setDefaultOptions (void)
   options.const_seg = CONST_NAME ? Safe_strdup (CONST_NAME) : NULL;     /* default to CONST for generated code */
   options.data_seg = DATA_NAME ? Safe_strdup (DATA_NAME) : NULL;        /* default to DATA for non-initialized data */
   options.stack10bit = 0;
-  options.out_fmt = 0;
+  options.out_fmt = 'i';
   options.dump_graphs = 0;
   options.dependencyFileOpt = 0;
   options.sdcccall = port->sdcccall;
@@ -2830,6 +2831,7 @@ main (int argc, char **argv, char **envp)
 
   initValues ();
 
+  sdccBinPath = getBinPath (argv[0]);
   setBinPaths (argv[0]);
   setDataPaths (argv[0]);
 

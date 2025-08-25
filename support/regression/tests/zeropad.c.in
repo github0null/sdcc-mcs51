@@ -63,11 +63,13 @@ struct x {
   char  b[10];
 };
 
+#if !defined(__SDCC_MODEL_SMALL) || !defined(__SDCC_GNU_AS) // Lack memory
 struct x STORAGE teststruct[5] = {
   { 10, {  1, 2, 3, 4, 5} },
   { 20, { 11 } },
   { 30, {  6, 7, 8} }
 };
+#endif
 
 #if FLEXARRAY
   struct y {
@@ -113,6 +115,7 @@ Zeropad (void)
   ASSERT (g[2].b == 3);
 #endif
 
+#if !defined(__SDCC_MODEL_SMALL) || !defined(__SDCC_GNU_AS) // Lack memory
   ASSERT (teststruct[0].b[1] ==  2);
   ASSERT (teststruct[0].b[5] ==  0);
   ASSERT (teststruct[1].b[0] == 11);
@@ -122,6 +125,7 @@ Zeropad (void)
   ASSERT (sizeof(teststruct[1].b) == 10);
   ASSERT (sizeof(teststruct[1])   == 12);
   ASSERT (sizeof(teststruct)      == 60);
+#endif
 
 #if FLEXARRAY
   ASSERT (incompletestruct.a    == 10);
@@ -138,8 +142,12 @@ Zeropad (void)
 #if TEST_G
   g[1].b = 1;
 #endif
+
+#if !defined(__SDCC_MODEL_SMALL) || !defined(__SDCC_GNU_AS) // Lack memory
   teststruct[0].b[5] = 1;
   teststruct[4].b[9] = 1;
+#endif
+
 #endif //STORAGE_auto
 }
 #endif

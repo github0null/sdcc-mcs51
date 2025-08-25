@@ -182,11 +182,17 @@ unsigned has_compound_literal(void) {
 }
 #endif
 
+#if defined(__SDCC_mcs51) && defined(__SDCC_GNU_AS)
+  #define __XDATA __xdata
+#else
+  #define __XDATA
+#endif
+
 #ifndef SKIP_INITIALIZERS
-unsigned has_designated_array_initializer[4] = { [3] = 1u };
-unsigned A1[] = { [3] = 1u };
-unsigned has_length_from_initializer[sizeof(has_designated_array_initializer) == sizeof(A1)];
-struct {
+__XDATA unsigned has_designated_array_initializer[4] = { [3] = 1u };
+__XDATA unsigned A1[] = { [3] = 1u };
+__XDATA unsigned has_length_from_initializer[sizeof(has_designated_array_initializer) == sizeof(A1)];
+__XDATA struct {
   unsigned first;
   double second;
 } has_designated_struct_initializer = { .second = 1, .first = 2 };
@@ -262,7 +268,7 @@ typedef union {
   flexible flex;
   char buffer[sizeof(flexible) + 2*sizeof(double)];
 } flex2;
-flex2 has_flexible_array = { .flex.len = 2 };
+__XDATA flex2 has_flexible_array = { .flex.len = 2 };
 #endif
 
 #ifndef SKIP_RESTRICT

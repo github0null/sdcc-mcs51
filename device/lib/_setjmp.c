@@ -91,14 +91,7 @@ static void dummy (void) __naked
 ;	-----------------------------------------
 	.globl ___setjmp
 ___setjmp:
-	ar2 = 0x02
-	ar3 = 0x03
-	ar4 = 0x04
-	ar5 = 0x05
-	ar6 = 0x06
-	ar7 = 0x07
-	ar0 = 0x00
-	ar1 = 0x01
+	.using 0
 ;../../device/lib/_setjmp.c:183:*buf++ = bpx;
 ;     genPointerSet
 ;     genGenPointerSet
@@ -253,10 +246,10 @@ _longjmp:
 	mov	dpl,r3
 	mov	a,r2
 	orl	a,r3
-	jnz	00001$
+	jnz	.L00001
 	inc	dptr
 ;     genRet
-00001$:
+.L00001:
 	_RETURN
 
 	__endasm;
@@ -279,14 +272,7 @@ static void dummy (void) __naked
 ;	-----------------------------------------
 	.globl ___setjmp
 ___setjmp:
-	ar2 = 0x02
-	ar3 = 0x03
-	ar4 = 0x04
-	ar5 = 0x05
-	ar6 = 0x06
-	ar7 = 0x07
-	ar0 = 0x00
-	ar1 = 0x01
+	.using 0
 ;     genReceive
 ;../../device/lib/_setjmp.c:125:*buf   = BP;
 ;     genPointerSet
@@ -353,14 +339,7 @@ ___setjmp:
 ;	-----------------------------------------
 	.globl _longjmp
 _longjmp:
-	ar2 = 0x02
-	ar3 = 0x03
-	ar4 = 0x04
-	ar5 = 0x05
-	ar6 = 0x06
-	ar7 = 0x07
-	ar0 = 0x00
-	ar1 = 0x01
+	.using 0
 ;     genReceive
 	mov	r0,sp
 	dec	r0
@@ -429,10 +408,10 @@ _longjmp:
 	mov	dpl,r3
 	mov	a,r2
 	orl	a,r3
-	jnz	00001$
+	jnz	.L00001_longjmp
 	inc	dptr
 ;     genRet
-00001$:
+.L00001_longjmp:
 	_RETURN
 
 	__endasm;

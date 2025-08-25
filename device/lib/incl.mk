@@ -161,10 +161,10 @@ COMMON_SDCC = \
 MODELS = small medium large huge
 
 CC = ${abs_top_builddir}/bin/sdcc
-SDAR = ${abs_top_builddir}/bin/sdar
+SDAR = ${abs_top_builddir}/bin/i51-elf-ar
 
-%.rel: %.c
+%.o: %.c
 	$(CC) $(CFLAGS) ${CPPFLAGS} ${EXTRA_CFLAGS} -c $< -o $@
 
-%.rel: ../%.c
+%.o: ../%.c
 	$(CC) $(CFLAGS) ${CPPFLAGS} ${EXTRA_CFLAGS} -c $< -o $@

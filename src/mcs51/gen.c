@@ -55,7 +55,7 @@ const char **fReturn = fReturn8051;
 const char *fReturn8051[] = { "dpl", "dph", "b", "a", "r4", "r5", "r6", "r7" }; // Historically the registers used for return values. Got abused for other stuff since, then partially replaced by aopArg and aopRet.
 static asmop *aopRet (sym_link *ftype);
 
-static short rbank = -1;
+//static short rbank = -1;
 
 #define REG_WITH_INDEX   mcs51_regWithIdx
 
@@ -1678,7 +1678,10 @@ aopGet (asmop *aop, int offset, bool bit16, bool dname)
             }
           else if (offset)
             {
-              dbuf_printf (&dbuf, "#(%s >> %d)", aop->aopu.aop_immd.aop_immd1, offset * 8);
+              if (offset != 1)
+                werror (E_INTERNAL_ERROR, __FILE__, __LINE__,
+                  "aopget got unsupported offset. addr > 64K");
+              dbuf_printf (&dbuf, "#hi_(%s)", aop->aopu.aop_immd.aop_immd1);
             }
           else
             {
@@ -1690,7 +1693,12 @@ aopGet (asmop *aop, int offset, bool bit16, bool dname)
         case AOP_SFR:
           if (aop->type == AOP_SFR && aop->size > 1)
             {
-              dbuf_printf (&dbuf, "((%s >> %d) & 0xFF)", aop->aopu.aop_dir, offset * 8);
+              if (offset == 0)
+                dbuf_printf (&dbuf, "lo_(%s)", aop->aopu.aop_dir);
+              else if (offset == 1)
+                dbuf_printf (&dbuf, "hi_(%s)", aop->aopu.aop_dir);
+              else
+                werror (E_INTERNAL_ERROR, __FILE__, __LINE__, "aopget got unsupported offset. addr > 64K");
             }
           else if (offset)
             {
@@ -1831,7 +1839,12 @@ aopPut (asmop *aop, const char *s, int offset)
     case AOP_SFR:
       if (aop->type == AOP_SFR && aop->size > 1)
         {
-          dbuf_printf (&dbuf, "((%s >> %d) & 0xFF)", aop->aopu.aop_dir, offset * 8);
+          if (offset == 0)
+            dbuf_printf (&dbuf, "lo_(%s)", aop->aopu.aop_dir);
+          else if (offset == 1)
+            dbuf_printf (&dbuf, "hi_(%s)", aop->aopu.aop_dir);
+          else
+            werror (E_INTERNAL_ERROR, __FILE__, __LINE__, "aopget got unsupported offset. addr > 64K");
         }
       else if (offset)
         {
@@ -3761,9 +3774,9 @@ pushbigreturn (operand *result)
 
   if (!sym->onStack)
     {
-      emitcode ("mov", "a, #%s", sym->rname);
+      emitcode ("mov", "a, #lo_(%s)", sym->rname);
       emitpush ("acc");
-      emitcode ("mov", "a, #(%s >> 8)", sym->rname);
+      emitcode ("mov", "a, #hi_(%s)", sym->rname);
       emitpush ("acc");
       emitcode ("mov", "a, #0x%02x", pointerTypeToGPByte (pointerCode (getSpec (operandType (result))), 0, 0));
       emitpush ("acc");
@@ -3880,9 +3893,11 @@ genCall (iCode * ic)
             {
               char *name = (OP_SYMBOL (IC_LEFT (ic))->rname[0] ?
                             OP_SYMBOL (IC_LEFT (ic))->rname : OP_SYMBOL (IC_LEFT (ic))->name);
-              emitcode ("mov", "r0,#%s", name);
-              emitcode ("mov", "r1,#(%s >> 8)", name);
-              emitcode ("mov", "r2,#(%s >> 16)", name);
+              werror (E_INTERNAL_ERROR, __FILE__, __LINE__,
+                "not support banked call: sym '%s'", name);
+              // emitcode ("mov", "r0,#%s", name);
+              // emitcode ("mov", "r1,#(%s >> 8)", name);
+              // emitcode ("mov", "r2,#(%s >> 16)", name);
             }
           emitcode (call, "__sdcc_banked_call");
         }
@@ -4327,6 +4342,12 @@ genFunction (iCode * ic)
   emitcode (";", " function %s", sym->name);
   emitcode (";", "-----------------------------------------");
 
+  /* one elf section per function */
+  if (IFFUNC_ISISR (ftype))
+    emitcode (".section", ".text, \"ax\"");
+  else
+    emitcode (".section", ".text.%s, \"ax\"", sym->rname);
+
   emitcode ("", "%s:", sym->rname);
   genLine.lineCurr->isLabel = 1;
   _G.currentFunc = sym;
@@ -4339,23 +4360,22 @@ genFunction (iCode * ic)
 
   /* here we need to generate the equates for the
      register bank if required */
-  if (FUNC_REGBANK (ftype) != rbank)
-    {
-      int i;
-
-      rbank = FUNC_REGBANK (ftype);
-      for (i = 0; i < mcs51_nRegs; i++)
-        {
-          if (regs8051[i].type != REG_BIT)
-            {
-              if (EQ (regs8051[i].base, "0"))
-                emitcode ("", "%s !equ !constbyte", regs8051[i].dname, 8 * rbank + regs8051[i].offset);
-              else
-                emitcode ("", "%s !equ %s + !constbyte", regs8051[i].dname, regs8051[i].base, 8 * rbank + regs8051[i].offset);
-            }
-        }
-    }
-
+  switch FUNC_REGBANK (ftype) {
+    case 0 :
+      emitcode ("", ".using 0");
+      break;
+    case 1 :
+      emitcode ("", ".using 1");
+      break;
+    case 2 :
+      emitcode ("", ".using 2");
+      break;
+    case 3 :
+      emitcode ("", ".using 3");
+      break;
+    default:
+      werror (E_NO_SUCH_BANK, FUNC_REGBANK (ftype));
+  }
   _G.stack.param_offset = 0;
   _G.stack.offset = sym->stack;
   _G.stack.xoffset = sym->xstack;
@@ -7229,7 +7249,7 @@ gencjneshort (operand * left, operand * right, symbol * lbl)
                   for (cidx = 1; cidx < size; cidx++)
                     if (chk[cidx])
                       emitcode ("orl", "a,%s", opGet (left, cidx, false, true));
-                  emitcode ("jnz", "%05d$", lbl->key + 100);
+                  emitcode ("jnz", ".L%05d", lbl->key + 100);
                   return;
                 }
               if ((!chk[0] || val[0] == 0xFF) &&
@@ -7245,7 +7265,7 @@ gencjneshort (operand * left, operand * right, symbol * lbl)
                   for (cidx = 1; cidx < size; cidx++)
                     if (chk[cidx])
                       emitcode ("anl", "a,%s", opGet (left, cidx, false, false));
-                  emitcode ("cjne", "a,#0xFF,%05d$", lbl->key + 100);
+                  emitcode ("cjne", "a,#0xFF,.L%05d", lbl->key + 100);
                   return;
                 }
             }
@@ -7282,14 +7302,14 @@ gencjneshort (operand * left, operand * right, symbol * lbl)
                       MOVA (opGet (right, lidx, false, false));
                       chk[lidx] = FALSE;
                     }
-                  emitcode ("cjne", "a,%s,%05d$", opGet (left, lidx, false, true), lbl->key + 100);
+                  emitcode ("cjne", "a,%s,.L%05d", opGet (left, lidx, false, true), lbl->key + 100);
 
                   for (cidx = lidx + 1; cidx < size; cidx++)
                     {
                       if (chk[cidx] && val[lidx] == val[cidx] && !IS_AOP_PREG (left))
                         {
                           chk[cidx] = FALSE;
-                          emitcode ("cjne", "a,%s,%05d$", opGet (left, cidx, false, true), lbl->key + 100);
+                          emitcode ("cjne", "a,%s,.L%05d", opGet (left, cidx, false, true), lbl->key + 100);
                         }
                     }
                 }
@@ -10814,7 +10834,7 @@ genUnpackBits (operand * result, const char *rname, int ptype, iCode * ifx)
           symbol *tlbl = newiTempLabel (NULL);
 
           emitcode ("jnb", "acc.%d,!tlabel", blen - 1, labelKey2num (tlbl->key));
-          emitcode ("orl", "a,#0x%02x", 0xffu << blen);
+          emitcode ("orl", "a,#0x%02x", (unsigned char)(0xffu << blen));
           emitLabel (tlbl);
         }
       opPut(result, "a", offset++);
@@ -10841,7 +10861,7 @@ genUnpackBits (operand * result, const char *rname, int ptype, iCode * ifx)
           symbol *tlbl = newiTempLabel (NULL);
 
           emitcode ("jnb", "acc.%d,!tlabel", rlen - 1, labelKey2num (tlbl->key));
-          emitcode ("orl", "a,#0x%02x", 0xffu << rlen);
+          emitcode ("orl", "a,#0x%02x", (unsigned char)(0xffu << rlen));
           emitLabel (tlbl);
         }
       opPut(result, "a", offset++);
@@ -12159,7 +12179,12 @@ genAddrOf (iCode * ic)
       dbuf_init (&dbuf, 128);
       if (offset)
         {
-          dbuf_printf (&dbuf, "#(%s >> %d)", sym->rname, offset * 8);
+          if (offset == 0)
+            dbuf_printf (&dbuf, "#lo_(%s)", sym->rname);
+          else if (offset == 1)
+            dbuf_printf (&dbuf, "#hi_(%s)", sym->rname);
+          else
+            werror (E_INTERNAL_ERROR, __FILE__, __LINE__, "aopget got unsupported offset. addr > 64K");
         }
       else
         {
@@ -12428,12 +12453,12 @@ genJumpTab (iCode * ic)
       /* now generate jump table, LSB */
       emitLabel (jtablo);
       for (jtab = setFirstItem (IC_JTLABELS (ic)); jtab; jtab = setNextItem (IC_JTLABELS (ic)))
-        emitcode (".db", "!tlabel", labelKey2num (jtab->key));
+        emitcode (".byte", "lo_(!tlabel)", labelKey2num (jtab->key));
 
       /* now generate jump table, MSB */
       emitLabel (jtabhi);
       for (jtab = setFirstItem (IC_JTLABELS (ic)); jtab; jtab = setNextItem (IC_JTLABELS (ic)))
-        emitcode (".db", "!tlabel>>8", labelKey2num (jtab->key));
+        emitcode (".byte", "hi_(!tlabel)", labelKey2num (jtab->key));
     }
 }
 
@@ -12946,6 +12971,67 @@ genEndCritical (iCode * ic)
     }
 }
 
+void checkFuncStack(struct symbol *func)
+{
+  symbol *sym;
+
+  if (!istack || !istack->syms)
+    return;
+
+  int stack_max_offset = 0;
+
+  for (sym = setFirstItem (istack->syms); sym; sym = setNextItem (istack->syms))
+    {
+      if (sym->level == 0)
+        continue;
+      if (sym->localof != func)
+        continue;
+
+      /* if on stack */
+      if (sym->onStack)
+        {
+          int stack_offset = 0;
+
+          if (options.omitFramePtr)
+            {
+              if (SPEC_OCLS (sym->etype)->paged)
+                stack_offset = func->xstack;
+              else
+                stack_offset = func->stack;
+            }
+
+          stack_offset += port->stack.offset; /* in case sp/bp points to the next location instead of last */
+
+          if (port->stack.direction < 0)
+            stack_offset = -stack_offset;
+
+          // dbuf_printf (oBuf, "to stack - %s %+d %+d \n", SYM_BP (sym), sym->stack - stack_offset, getSize (sym->type));
+          int stk_offset = sym->stack - stack_offset + getSize (sym->type);
+          if (stk_offset > stack_max_offset)
+            stack_max_offset = stk_offset;
+          continue;
+        }
+    }
+
+    int iram_max_size = 128;
+    if (options.iram_size)
+      iram_max_size = options.iram_size;
+
+    int iram_remain_size;
+    iram_remain_size = iram_max_size;
+    iram_remain_size -= 48; // 32 bytes to hold up to 4 banks and 16 bytes for bits variables.
+    iram_remain_size -= 20; // reserve some space for normal usage.
+
+    if (stack_max_offset > iram_remain_size)
+      {
+        /* It's just a rough estimate. Not very precise */
+        float weight = ((float)stack_max_offset / (iram_max_size - 32)) * 100;
+        fprintf(stderr, 
+          "warning: The stack maybe overflowed in function '%s', max stack offset: %d bytes (weight: %0.3f %%)\n",
+          func->name, stack_max_offset, weight);
+      }
+}
+
 /*-----------------------------------------------------------------*/
 /* gen51Code - generate code for 8051 based controllers            */
 /*-----------------------------------------------------------------*/
@@ -12962,7 +13048,12 @@ gen51Code (iCode * lic)
 
   /* print the allocation information */
   if (allocInfo && currFunc)
-    printAllocInfo (currFunc, codeOutBuf);
+    {
+      printAllocInfo (currFunc, codeOutBuf);
+      /* guess function is stack overflowed ? */
+      checkFuncStack(currFunc);
+    }
+
   /* if debug information required */
   if (options.debug && currFunc)
     {

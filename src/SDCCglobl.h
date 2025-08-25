@@ -290,6 +290,7 @@ struct options
     int stack_size;             /* MCS51/DS390 - Tells the linker to allocate this space for stack */
     int acall_ajmp;             /* MCS51 - Use acall/ajmp instead of lcall/ljmp */
     int no_ret_without_call;    /* MCS51 - Do not use ret independent of acall/lcall */
+    int no_map_and_disasm;      /* MCS51 - Do not output .map and disasm */
     int use_non_free;           /* Search / include non-free licensed libraries and header files */
     /* starting address of the segments */
     int xstack_loc;             /* initial location of external stack */
@@ -368,6 +369,7 @@ extern struct optimize optimize;
 extern struct options options;
 extern unsigned maxInterrupts;
 extern int ignoreTypedefType;
+extern const char *sdccBinPath; /* sdcc executable bin dir path   SDCCmain.c */
 
 /* Visible from SDCCmain.c */
 extern set *preArgvSet;

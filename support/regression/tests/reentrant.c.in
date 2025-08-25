@@ -21,7 +21,11 @@
   return 1;
 }
 
+#if defined(__SDCC_mcs51) && defined(__SDCC_GNU_AS) // Lack of memory
+int div2n(int a, int n) __reentrant
+#else
 {type} div2n({type} a, int n) __reentrant
+#endif
 {
   if(n>0) return div2n(a/2,n-1);
   return a;

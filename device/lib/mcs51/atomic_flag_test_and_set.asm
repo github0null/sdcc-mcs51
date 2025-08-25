@@ -26,20 +26,10 @@
 ;  might be covered by the GNU General Public License.
 ;--------------------------------------------------------------------------
 
-	.area HOME    (CODE)
-	.area GSINIT0 (CODE)
-	.area GSINIT1 (CODE)
-	.area GSINIT2 (CODE)
-	.area GSINIT3 (CODE)
-	.area GSINIT4 (CODE)
-	.area GSINIT5 (CODE)
-	.area GSINIT  (CODE)
-	.area GSFINAL (CODE)
-	.area CSEG    (CODE)
-
-	.area HOME    (CODE)
-
-_atomic_flag_test_and_set::
+	.global _atomic_flag_test_and_set
+	.global sdcc_atomic_exchange_gptr_impl
+	.section .text._atomic_flag_test_and_set, "ax"
+_atomic_flag_test_and_set:
 	mov  r2, #0x01
 	ljmp sdcc_atomic_exchange_gptr_impl
 

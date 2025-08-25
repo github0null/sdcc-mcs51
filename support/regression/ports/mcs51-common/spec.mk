@@ -30,11 +30,11 @@ else
   DEV_NULL ?= /dev/null
 endif
 
-SDCCFLAGS += --less-pedantic
-LINKFLAGS += mcs51.lib libsdcc.lib liblong.lib libint.lib libfloat.lib liblonglong.lib
+SDCCFLAGS += --less-pedantic --nooverlay --stack-auto --iram-size 256 --xram-size 65536 --code-size 65536
+LINKFLAGS +=
 
-OBJEXT = .rel
-BINEXT = .ihx
+OBJEXT = .o
+BINEXT = .hex
 
 # otherwise `make` deletes testfwk.rel and `make -j` will fail
 .PRECIOUS: $(PORT_CASES_DIR)/%$(OBJEXT)

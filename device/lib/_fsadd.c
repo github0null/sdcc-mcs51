@@ -59,21 +59,21 @@ fsadd_direct_entry:
 
 	// which exponent is greater?
 	mov	a, exp_b
-	cjne	a, exp_a, 00005$
-	sjmp	00011$
-00005$:	jnc	00010$
+	cjne	a, exp_a, .L00005
+	sjmp	.L00011
+.L00005:	jnc	.L00010
 
 	// a's exponent was greater, so shift b's mantissa
 	lcall	fs_swap_a_b
 
-00010$:
+.L00010:
 	// b's exponent was greater, so shift a's mantissa
 	mov	a, exp_b
 	clr	c
 	subb	a, exp_a
 	lcall	fs_rshift_a	// acc has # of shifts to do
 
-00011$:
+.L00011:
 	// decide if we need to add or subtract
 	// sign_a and sign_b are stored in the flag bits of psw,
 	// so this little trick checks if the arguments have the
@@ -81,9 +81,9 @@ fsadd_direct_entry:
 	mov	a, psw
 	swap	a
 	xrl	a, psw
-	jb	acc.1, 00022$
+	jb	acc.1, .L00022
 
-00020$:
+.L00020:
 	// add the mantissas (both positive or both negative)
 	mov	a, r2
 	add	a, r5
@@ -95,18 +95,18 @@ fsadd_direct_entry:
 	addc	a, r7
 	mov	r4, a
 	// check for overflow past 24 bits
-	jnc	00021$
+	jnc	.L00021
 	mov	a, #1
 	lcall	fs_rshift_a
 	mov	a, r4
 	orl	a, #0x80
 	mov	r4, a
-00021$:
+.L00021:
 	ljmp	fs_round_and_return
 
 
 
-00022$:
+.L00022:
 	// subtract the mantissas (one of them is negative)
 	clr	c
 	mov	a, r2
@@ -118,7 +118,7 @@ fsadd_direct_entry:
 	mov	a, r4
 	subb	a, r7
 	mov	r4, a
-	jnc	00025$
+	jnc	.L00025
 	// if we get a negative result, turn it positive and
 	// flip the sign bit
 	clr	c
@@ -135,7 +135,7 @@ fsadd_direct_entry:
 	subb	a, r4
 	mov	r4, a
 	cpl	sign_a
-00025$:
+.L00025:
 	lcall	fs_normalize_a
 	ljmp	fs_round_and_return
 

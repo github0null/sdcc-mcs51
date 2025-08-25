@@ -17,7 +17,7 @@
 # define ADDRESS(x) (0xCA ## x)
 #endif
 
-#if !defined(__SDCC_pdk14) && !defined(__SDCC_pdk15) // TODO: Make test suitable for pdk
+#if !defined(__SDCC_pdk14) && !defined(__SDCC_pdk15) && !defined(__SDCC_GNU_AS) // TODO: Make test suitable for pdk
 typedef struct
 {
   int a, b;
@@ -46,7 +46,7 @@ char z = 'z';
 void
 testAbsolute(void)
 {
-#if !defined(__SDCC_pdk14) && !defined(__SDCC_pdk15) // TODO: Make test suitable for pdk
+#if !defined(__SDCC_pdk14) && !defined(__SDCC_pdk15) && !defined(__SDCC_GNU_AS) // TODO: Make test suitable for pdk
 #if !defined(PORT_HOST)
   static {mem} char __at(ADDRESS(B6)) s = 's';
   char {mem} *pC = (char {mem} *)(ADDRESS(B0));
@@ -69,7 +69,7 @@ testAbsolute(void)
 #endif
 }
 
-#if defined(__SDCC_mcs51) || defined(__SDCC_ds390)
+#if (defined(__SDCC_mcs51) || defined(__SDCC_ds390)) && !defined(__SDCC_GNU_AS)
 volatile __data unsigned char __at(0x20) Byte0 = 0x00;
 volatile __data unsigned char __at(0x22) Byte1 = 0x00;
 volatile __bit Bit0, Bit1, Bit2, Bit3, Bit4, Bit5, Bit6, Bit7, Bit8;
@@ -78,7 +78,7 @@ volatile __bit Bit0, Bit1, Bit2, Bit3, Bit4, Bit5, Bit6, Bit7, Bit8;
 void
 testAbsBdata(void)
 {
-#if defined(__SDCC_mcs51) || defined(__SDCC_ds390)
+#if (defined(__SDCC_mcs51) || defined(__SDCC_ds390)) && !defined(__SDCC_GNU_AS)
   Bit0 = 1;
   ASSERT(Byte0 == 0x00);
   Byte0 = 0xFF;
