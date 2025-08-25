@@ -207,6 +207,10 @@ _mcs51_finaliseOptions (void)
     fprintf(stderr, "option: --stack-auto is required.\n");
     options_failed = 1;
   }
+  if (options.model == MODEL_MEDIUM) {
+    fprintf(stderr, "option: --model-medium is not supported.\n");
+    options_failed = 1;
+  }
   if (options.model == MODEL_HUGE) {
     fprintf(stderr, "option: --model-huge is not supported.\n");
     options_failed = 1;
