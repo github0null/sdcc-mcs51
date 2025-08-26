@@ -13024,11 +13024,9 @@ void checkFuncStack(struct symbol *func)
 
     if (stack_max_offset > iram_remain_size)
       {
-        /* It's just a rough estimate. Not very precise */
-        float weight = ((float)stack_max_offset / (iram_max_size - 32)) * 100;
         fprintf(stderr, 
-          "warning: The stack maybe overflowed in function '%s', max stack offset: %d bytes (weight: %0.3f %%)\n",
-          func->name, stack_max_offset, weight);
+          "warning: The stack maybe overflowed in function '%s', max stack offset: %d bytes.\n",
+          func->name, stack_max_offset);
       }
 }
 

@@ -84,7 +84,8 @@ static char *_mcs51_keywords[] =
   NULL
 };
 
-
+extern set *linkOptionsSet2;
+extern set *linkOptionsSet;
 
 void mcs51_assignRegisters (ebbIndex *);
 
@@ -1031,6 +1032,25 @@ static void doLink()
   dbuf_append_str (&dbuf,
   "i51-elf-ld --oformat=elf32-i51 --no-check-sections --gc-sections");
 
+  /* put args passed by -Wl,xx */
+  const char *tmp;
+  for (tmp = setFirstItem (linkOptionsSet2); tmp; tmp = setNextItem (linkOptionsSet2))
+    {
+      if (*tmp != '\0')
+        {
+          dbuf_append_char (&dbuf, ' ');
+          dbuf_append_str (&dbuf, tmp);
+        }
+    }
+  for (tmp = setFirstItem (linkOptionsSet); tmp; tmp = setNextItem (linkOptionsSet))
+    {
+      if (*tmp != '\0')
+        {
+          dbuf_append_char (&dbuf, ' ');
+          dbuf_append_str (&dbuf, tmp);
+        }
+    }
+
   if (fullDstFileName)
     {
       struct dbuf_s filePathWithoutExt, tmpBuf;
@@ -1120,7 +1140,7 @@ static void doLink()
       char *buf = dbuf_detach_c_str (&dbuf);
       char *tb = setPrefixSuffix (buf);
       if (options.verbose)
-        printf ("ld: %s\n", tb);
+        printf ("sdcc: %s\n", tb);
       ret = sdcc_system (tb);
       if (ret)
         exit (EXIT_FAILURE);
@@ -1136,7 +1156,7 @@ static void doLink()
       char *buf = dbuf_detach_c_str (&dbuf);
       char *tb = setPrefixSuffix (buf);
       if (options.verbose)
-        printf ("ld: %s\n", tb);
+        printf ("sdcc: %s\n", tb);
       ret = sdcc_system (tb);
     }
 }
