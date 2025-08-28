@@ -84,6 +84,12 @@ static char *_mcs51_keywords[] =
   NULL
 };
 
+static builtins __mcs51_builtins[] =
+{
+// { "__builtin_memcpy_x2x","v",3,{"cx*","cx*","i"}}, /* void __builtin_memcpy_x2x (xdata char *,xdata char *,int) */
+  { "__delay_cycles","v",1,{"Ui"}},
+};
+
 extern set *linkOptionsSet2;
 extern set *linkOptionsSet;
 
@@ -1237,7 +1243,7 @@ PORT mcs51_port =
     ";XSTK (PAG,XDATA)", // xstack_name
     ".stack, \"aw\"", //"STACK   (DATA)" istack_name
     ".text",           // CSEG    (CODE) code_name
-    ".data",           // DSEG    (DATA) data_name
+    ".bss",           // DSEG    (DATA) data_name
     ".idata, \"aw\"",           // ISEG    (DATA) idata_name
     ".pdata, \"aw\"",      // PSEG    (PAG,XDATA) pdata_name
     ".xbss, \"aw\"",          // XSEG    (XDATA) xdata_name
@@ -1316,7 +1322,7 @@ PORT mcs51_port =
   0,                            /* leave == */
   FALSE,                        /* No array initializer support. */
   cseCostEstimation,
-  NULL,                         /* no builtin functions */
+  __mcs51_builtins,                         /* no builtin functions */
   GPOINTER,                     /* treat unqualified pointers as "generic" pointers */
   0,                            /* reset labelKey to 1 */
   1,                            /* globals & local statics allowed */

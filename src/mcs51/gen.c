@@ -13031,6 +13031,91 @@ void checkFuncStack(struct symbol *func)
 }
 
 /*-----------------------------------------------------------------*/
+/* genBuiltIn - calls the appropriate function to  generating code */
+/* for a built in function                                         */
+/*-----------------------------------------------------------------*/
+static void
+genBuiltIn (iCode * ic)
+{
+  operand *bi_parms[MAX_BUILTIN_ARGS];
+  int nbi_parms;
+  iCode *bi_iCode;
+  symbol *bif;
+
+  /* get all the arguments for a built in function */
+  bi_iCode = getBuiltinParms (ic, &nbi_parms, bi_parms);
+
+  /* which function is it */
+  bif = OP_SYMBOL (IC_LEFT (bi_iCode));
+
+  if (strcmp (bif->name, "__delay_cycles") == 0)
+    {
+      operand *oper = bi_parms[0];
+      sym_link *dtype = operandType (oper);
+      sym_link *etype = getSpec (dtype);
+
+      if (!IS_LITERAL (etype))
+        {
+          werrorfl (ic->filename, ic->lineno, E_SYNTAX_ERROR,
+            "__delay_cycles require a constant value, not variable.");
+          exit (1);
+        }
+
+      unsigned long cycles = ulFromVal(OP_VALUE (oper));
+      if (cycles > 0xFFFF)
+        {
+          werrorfl (ic->filename, ic->lineno, E_SYNTAX_ERROR,
+            "__delay_cycles value must <= 0xFFFF, value will be cut off.");
+          cycles = cycles & 0xFFFF;
+        }
+
+      // emitcode (";", "__delay_cycles: %d", cycles);
+      if (cycles <= 10)
+        {
+          for (int i = 0; i < cycles; i++)
+            emitcode ("nop", "");
+        }
+      else if (cycles <= 770) // 255x3 + 5
+        {
+          cycles -= 5;
+          symbol *tlbl = newiTempLabel (NULL);
+          emitpush ("acc"); // +2 cycles
+          int loop = cycles / 3, remain = cycles % 3;
+          emitcode ("mov", "a,#0x%02x", loop); // +1 cycles
+          emitLabel (tlbl);
+          emitcode ("dec", "a"); // +1 cycles
+          emitcode ("jnz", "!tlabel", labelKey2num (tlbl->key)); // +2 cycles
+          for (int i = 0; i < remain; i++)
+            emitcode ("nop", "");
+          emitpop ("acc"); // +2 cycles
+        }
+      else
+        {
+          cycles -= (6 * 2) + 1;
+          symbol *tlbl = newiTempLabel (NULL);
+          int loop_h = (cycles / 5) >> 8;
+          int loop_l = (cycles - (loop_h * 5 * 255)) / 8;
+          int remain = (cycles - (loop_h * 5 * 255)) % 8;
+          emitpush ("acc"); // +2 cycles
+          emitpush ("dpl"); // +2 cycles
+          emitpush ("dph"); // +2 cycles
+          emitcode ("mov", "dptr,#0x0"); // +1 cycles
+          emitLabel (tlbl);
+          emitcode ("inc", "dptr"); // +2 cycles
+          emitcode ("mov", "a,dph"); // +1 cycles
+          emitcode ("cjne", "a,#0x%02x,!tlabel", loop_h, labelKey2num (tlbl->key)); // +2 cycles
+          emitcode ("mov", "a,dpl"); // +1 cycles
+          emitcode ("cjne", "a,#0x%02x,!tlabel", loop_l, labelKey2num (tlbl->key)); // +2 cycles
+          for (int i = 0; i < remain; i++)
+            emitcode ("nop", "");
+          emitpop ("dpl"); // +2 cycles
+          emitpop ("dph"); // +2 cycles
+          emitpop ("acc"); // +2 cycles
+        }
+    }
+}
+
+/*-----------------------------------------------------------------*/
 /* gen51Code - generate code for 8051 based controllers            */
 /*-----------------------------------------------------------------*/
 void
@@ -13316,7 +13401,10 @@ gen51Code (iCode * lic)
           break;
 
         case SEND:
-          addSet (&_G.sendSet, ic);
+          if (ic->builtinSEND)
+            genBuiltIn (ic);
+          else
+            addSet (&_G.sendSet, ic);
           break;
 
         case DUMMY_READ_VOLATILE:
