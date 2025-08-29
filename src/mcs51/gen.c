@@ -13094,8 +13094,8 @@ genBuiltIn (iCode * ic)
           cycles -= (6 * 2) + 1;
           symbol *tlbl = newiTempLabel (NULL);
           int loop_h = (cycles / 5) >> 8;
-          int loop_l = (cycles - (loop_h * 5 * 255)) / 8;
-          int remain = (cycles - (loop_h * 5 * 255)) % 8;
+          int loop_l = (cycles - (loop_h * 5 * 256)) / 8;
+          int remain = (cycles - (loop_h * 5 * 256)) % 8;
           emitpush ("acc"); // +2 cycles
           emitpush ("dpl"); // +2 cycles
           emitpush ("dph"); // +2 cycles
