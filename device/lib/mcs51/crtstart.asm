@@ -91,6 +91,17 @@ __sdcc_startup:
 .L00004:
 
 	;-----------------------------
+	; Do some user's startup code
+	;-----------------------------
+	mov r0, #___sdcc_external_startup
+	mov r1, #hi_(___sdcc_external_startup)
+	mov a, r0
+	orl a, r1
+	jz .L00005
+	lcall ___sdcc_external_startup
+.L00005:
+
+	;-----------------------------
 	; Copy initialized xdata
 	;-----------------------------
 	mov a, #__xdata_has_copy
@@ -139,12 +150,5 @@ __sdcc_startup:
 	; Jump to main()
 	;-----------------------------
 	.section .init.3, "ax"
-	mov r0, #___sdcc_external_startup
-	mov r1, #hi_(___sdcc_external_startup)
-	mov a, r0
-	orl a, r1
-	jz .L00005
-	lcall ___sdcc_external_startup
-.L00005:
 	ljmp _main
 	ljmp __sdcc_startup
